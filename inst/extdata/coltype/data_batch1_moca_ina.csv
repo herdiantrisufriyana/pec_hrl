@@ -1,0 +1,17 @@
+colname,old_coltype,new_coltype
+id,numeric,NA
+no,numeric,NA
+visuospatial_executive,character,NA
+naming,character,NA
+memory1,character,NA
+memory2,character,NA
+attention_number,character,NA
+attention_letter,character,NA
+attention_substraction,character,NA
+language_repeat,character,NA
+language_mention,character,NA
+abstraction,character,NA
+delayed_recall,character,NA
+orientation,character,NA
+total,numeric,NA
+class,character,NA

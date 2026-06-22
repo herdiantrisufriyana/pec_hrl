@@ -1,0 +1,23 @@
+services:
+  rstudio:
+    build: .
+    image: ${COMPOSE_PROJECT_NAME:-project}:latest
+    ports:
+      - "127.0.0.1:8787:8787"
+    volumes:
+      - ./:/home/rstudio/project
+    environment:
+      - DISABLE_AUTH=true
+    command: ["/init"]
+
+  jupyter:
+    image: ${COMPOSE_PROJECT_NAME:-project}:latest
+    ports:
+      - "127.0.0.1:8888:8888"
+    volumes:
+      - ./:/home/rstudio/project
+    command: >
+      bash -lc "jupyter-lab --ip=0.0.0.0 --no-browser --allow-root
+      --ServerApp.root_dir=/home/rstudio/project
+      --ServerApp.token=''
+      --ServerApp.password=''"

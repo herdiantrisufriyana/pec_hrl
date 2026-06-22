@@ -1,0 +1,13 @@
+old_colname,new_colname
+Number,no
+Name,name
+Age,age
+Sex,sex
+Education,edu
+DMduration,dm_duration
+Maritalstatus,marriage
+comorbid,comorbidity
+Treatment,treatment
+Smoking,smoking
+HbA1c,hba1c
+Fatigue,fatigue

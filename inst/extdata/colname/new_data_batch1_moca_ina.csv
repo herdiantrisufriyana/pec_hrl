@@ -1,0 +1,17 @@
+old_colname,new_colname
+id,id
+No.,no
+Visuospasial/Eksekutif,visuospatial_executive
+Penamaan,naming
+Memori Ke-1,memory1
+Memori Ke-2,memory2
+Atensi Angka,attention_number
+Atensi Huruf,attention_letter
+Atensi Pengurangan,attention_substraction
+Bahasa Ulangi,language_repeat
+Bahasa Sebutkan,language_mention
+Abstraksi,abstraction
+Delayed Recall,delayed_recall
+Orientasi,orientation
+Nilai Total MoCA-INA,total
+Koversi,class
