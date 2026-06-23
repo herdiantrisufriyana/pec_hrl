@@ -214,8 +214,8 @@ compute_gradcam_eligible <- function(model_prefix) {
   eligible <- list()
   for (ont_id in unique(gene_gc$ontology)) {
     sub <- gene_gc[gene_gc$ontology == ont_id, ]
-    all_vals <- gc$value[gc$ontology == ont_id]
-    q975 <- quantile(all_vals, 0.975)
+    # 97.5th percentile over gene values only (not all voxels)
+    q975 <- quantile(sub$value, 0.975)
     genes_above <- sub$feature[sub$value > q975]
     if (length(genes_above) > 0) {
       eligible[[ont_id]] <- as.character(genes_above)
