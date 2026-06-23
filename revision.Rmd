@@ -240,11 +240,24 @@ compute_gradcam_eligible <- function(model_prefix) {
 }
 ```
 
-```{r Precompute grad-CAM eligibility for all models, include=FALSE}
+```{r Precompute grad-CAM eligibility and ontotype for all models, include=FALSE}
 gradcam_eligible <- setNames(
   lapply(models$model_prefix, compute_gradcam_eligible),
   models$model_prefix
 )
+
+# Extract ontotype gene lists for tree display
+ontotype_genes <- setNames(lapply(models$model_prefix, function(prefix) {
+  ts_file <- paste0("data/tidyset/", prefix, "_target.ts.tar.gz")
+  if (!file.exists(ts_file)) return(NULL)
+  extract_dir <- sub("\\.ts\\.tar\\.gz$", "", ts_file)
+  if (dir.exists(extract_dir)) unlink(extract_dir, recursive = TRUE)
+  ts <- TidySet.read(ts_file)
+  ontotype <- notes(experimentData(ts))[["ontotype"]]
+  if (dir.exists(extract_dir)) unlink(extract_dir, recursive = TRUE)
+  # Return gene names per node (keyed by eval_node format e.g. "ONT107")
+  lapply(ontotype, rownames)
+}), models$model_prefix)
 ```
 
 ```{r Helper functions for threshold tables, include=FALSE}
@@ -359,23 +372,26 @@ for (i in 1:nrow(disc_cal_data)) {
       c2_str <- if (valid_c2) "\U2713" else ""
       c3_str <- if (valid_c3) "\U2713" else ""
 
-      # Get tree display name and mark eligible genes with asterisk
+      # Get tree display name with ontotype genes and dagger marking
       tree_display <- dn$original_id
       if (!is.null(tree_order)) {
         idx <- match(dn$node, tree_order$eval_node)
         if (!is.na(idx)) {
-          # Get genes for this node and mark eligible ones
-          node_genes <- tree_order$genes[[idx]]
+          # Use ontotype genes (DI-VNN cumulative convention)
+          ont_genes_list <- ontotype_genes[[m$model_prefix]]
+          node_genes <- if (!is.null(ont_genes_list)) ont_genes_list[[dn$node]] else character(0)
+          # Fall back to ontology CSV genes if ontotype not available
+          if (is.null(node_genes) || length(node_genes) == 0) {
+            node_genes <- tree_order$genes[[idx]]
+          }
           eligible_genes <- if (!is.null(gc_eligible)) gc_eligible[[dn$node]] else character(0)
           if (length(node_genes) > 0) {
-            marked_genes <- sapply(node_genes, \(g) if (g %in% eligible_genes) paste0(g, "*") else g)
+            marked_genes <- sapply(node_genes, \(g) if (g %in% eligible_genes) paste0(g, "\U2020") else g)
             gene_str <- paste0(" (", paste(marked_genes, collapse = ", "), ")")
           } else {
             gene_str <- ""
           }
-          # Rebuild display with marked genes
           raw_display <- tree_order$display[idx]
-          # Remove old gene string if present
           raw_no_genes <- sub(" \\(.*\\)$", "", raw_display)
           tree_display <- paste0(raw_no_genes, gene_str)
         }
