@@ -313,11 +313,15 @@ for (i in 1:nrow(disc_cal_data)) {
   dev_nodes_raw <- extract_thr_for_model(m$model_prefix, "data/eval_train/", ont_name_file)
   test_nodes <- extract_thr_for_model(m$model_prefix, "data/eval/", ont_name_file)
 
-  # Order dev_nodes by tree traversal
+  # Order dev_nodes by tree traversal, then append "root" if not already in tree
   dev_by_node <- setNames(dev_nodes_raw, sapply(dev_nodes_raw, \(x) x$node))
   if (!is.null(tree_order)) {
     dev_nodes <- lapply(tree_order$eval_node, \(n) dev_by_node[[n]])
     dev_nodes <- dev_nodes[!sapply(dev_nodes, is.null)]
+    # Add literal "root" node if it exists but isn't in the tree
+    if ("root" %in% names(dev_by_node) && !"root" %in% tree_order$eval_node) {
+      dev_nodes <- c(list(dev_by_node[["root"]]), dev_nodes)
+    }
   } else {
     dev_nodes <- dev_nodes_raw[order(sapply(dev_nodes_raw, \(x) x$node != "root"), sapply(dev_nodes_raw, \(x) x$node))]
   }
