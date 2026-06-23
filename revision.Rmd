@@ -377,7 +377,7 @@ for (i in 1:nrow(disc_cal_data)) {
     labs(x = "Net benefit (dev set)", y = NULL, fill = NULL) +
     theme_minimal() +
     theme(
-      axis.text.y = element_text(family = "mono", size = 7, hjust = 1),
+      axis.text.y = element_text(family = "mono", size = 7, hjust = 0),
       legend.position = "top"
     )
 
