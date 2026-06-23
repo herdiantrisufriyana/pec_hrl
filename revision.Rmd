@@ -109,30 +109,22 @@ for (i in 1:nrow(disc_cal_data)) {
   dev <- m$metrics_dev[[1]] |> arrange(node != "root", node)
   test <- m$metrics_test[[1]] |> arrange(node != "root", node)
 
-  combined <- dev |>
-    select(original_id) |>
-    cbind(
-      dev |> transmute(
-        `AUC-ROC (Dev)` = fmt_auroc(auroc, auroc_ci),
-        `AUC-PRC (Dev)` = fmt_val(auprc),
-        `RMSE (Dev)` = fmt_rmse(rmse, rmse_ci)
-      )
-    )
-
-  # Match test rows to dev rows by node
   test_matched <- dev |>
     select(node) |>
-    left_join(test |> select(node, auroc, auroc_ci, auprc, rmse, rmse_ci), by = "node")
+    left_join(test |> select(node, auroc, auroc_ci, auprc, rmse, rmse_ci), by = "node", suffix = c("", "_test"))
 
-  combined <- combined |>
+  combined <- data.frame(Ontology = dev$original_id) |>
     cbind(
-      test_matched |> transmute(
-        `AUC-ROC (Test)` = fmt_auroc(auroc, auroc_ci),
-        `AUC-PRC (Test)` = fmt_val(auprc),
-        `RMSE (Test)` = fmt_rmse(rmse, rmse_ci)
+      data.frame(
+        `AUC-ROC (Dev)` = fmt_auroc(dev$auroc, dev$auroc_ci),
+        `AUC-ROC (Test)` = fmt_auroc(test_matched$auroc, test_matched$auroc_ci),
+        `AUC-PRC (Dev)` = fmt_val(dev$auprc),
+        `AUC-PRC (Test)` = fmt_val(test_matched$auprc),
+        `RMSE (Dev)` = fmt_rmse(dev$rmse, dev$rmse_ci),
+        `RMSE (Test)` = fmt_rmse(test_matched$rmse, test_matched$rmse_ci),
+        check.names = FALSE
       )
-    ) |>
-    rename(Ontology = original_id)
+    )
 
   cat(sprintf("\n## %s\n\n", caption))
 
