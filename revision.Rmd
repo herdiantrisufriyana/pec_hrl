@@ -103,7 +103,7 @@ for (i in 1:nrow(disc_cal_data)) {
   m <- disc_cal_data[i, ]
   section_title <- paste0(m$pe_subtype, " — ", m$associated_factor,
                            " (Fig ", m$figure_ref, ", ", m$ontology_type, ")")
-  table_caption <- "AUROC, AUPRC, and calibration"
+  table_caption <- paste0("Table ", i, ". AUROC, AUPRC, and calibration.")
 
   dev <- m$metrics_dev[[1]] |> arrange(node != "root", node)
   test <- m$metrics_test[[1]] |> arrange(node != "root", node)
@@ -190,7 +190,7 @@ thr_test |>
     NPV = ifelse(is.nan(npv), "—", sprintf("%.1f%% (%.1f, %.1f)", npv, npv_lb, npv_ub)),
     TNR = ifelse(is.nan(tnr), "—", sprintf("%.1f%% (%.1f, %.1f)", tnr, tnr_lb, tnr_ub))
   ) |>
-  kable(caption = "Table 2. Confusion matrix metrics at selected thresholds (test set, 95% CIs).", format = "html") |>
+  kable(caption = "Table 8. Confusion matrix metrics at selected thresholds (test set, 95% CIs).", format = "html") |>
   kable_classic() |> column_spec(1:8, extra_css = "vertical-align:top;")
 ```
 
@@ -279,7 +279,7 @@ thr_dev |>
     `NB Ref (max of treat-all, 0)` = sprintf("%.4f", nb_ref),
     `NB Diff` = ifelse(is.nan(nb_diff), "—", sprintf("%.4f", nb_diff))
   ) |>
-  kable(caption = "Table 3. Threshold selection from development set: net benefit vs. best reference.", format = "html") |>
+  kable(caption = "Table 9. Threshold selection from development set: net benefit vs. best reference.", format = "html") |>
   kable_classic() |> column_spec(1:6, extra_css = "vertical-align:top;")
 ```
 
