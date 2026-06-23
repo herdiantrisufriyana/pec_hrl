@@ -370,6 +370,9 @@ for (i in 1:nrow(disc_cal_data)) {
     pivot_longer(cols = c(nb_model, nb_ref), names_to = "type", values_to = "nb") |>
     mutate(type = factor(type, levels = c("nb_ref", "nb_model"), labels = c("NB Ref", "NB Model")))
 
+  n_nodes <- nrow(nb_plot_data)
+  fig_height <- min(48, max(2, n_nodes * 0.25 + 1))
+
   nb_plot <- ggplot(nb_long, aes(x = nb, y = ontology, fill = type)) +
     geom_col(position = "identity", width = 0.7, alpha = 0.8) +
     scale_fill_manual(values = c("NB Ref" = "grey70", "NB Model" = "steelblue")) +
@@ -381,7 +384,10 @@ for (i in 1:nrow(disc_cal_data)) {
       legend.position = "top"
     )
 
-  print(nb_plot)
+  plot_file <- tempfile(fileext = ".png")
+  ggsave(plot_file, nb_plot, width = 10, height = fig_height, dpi = 150)
+  cat(sprintf('\n\n<img src="data:image/png;base64,%s" width="100%%"/>\n\n',
+    base64enc::base64encode(plot_file)))
   cat("\n\n")
 
   rows <- list()
