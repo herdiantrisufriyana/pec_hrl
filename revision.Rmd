@@ -268,6 +268,10 @@ for (i in 1:nrow(models)) {
     d1 <- get_metric(td$thr[[1]], p$m1); d2 <- get_metric(td$thr[[1]], p$m2)
     t1 <- get_metric(tt$thr[[1]], p$m1); t2 <- get_metric(tt$thr[[1]], p$m2)
 
+    valid_dev <- is.finite(d1$lb) && d1$lb > 0 && is.finite(d2$lb) && d2$lb > 0
+    valid_test <- is.finite(t1$lb) && t1$lb > 0 && is.finite(t2$lb) && t2$lb > 0
+    valid <- if (valid_dev && valid_test) "Yes" else "No"
+
     rows[[length(rows) + 1]] <- data.frame(
       Model = if (j == 1) m$model_id else "",
       Figure = if (j == 1) m$figure_ref else "",
@@ -277,6 +281,7 @@ for (i in 1:nrow(models)) {
       Metrics = p$label,
       Dev = fmt_pair(d1$avg, d1$lb, d1$ub, d2$avg, d2$lb, d2$ub),
       Test = fmt_pair(t1$avg, t1$lb, t1$ub, t2$avg, t2$lb, t2$ub),
+      Valid = valid,
       check.names = FALSE
     )
   }
@@ -284,7 +289,7 @@ for (i in 1:nrow(models)) {
 
 do.call(rbind, rows) |>
   kable(caption = "Table 8. Threshold selection (dev set net benefit) and confusion matrix metrics (dev and test set, 95% CIs).", format = "html") |>
-  kable_classic() |> column_spec(1:8, extra_css = "vertical-align:top;")
+  kable_classic() |> column_spec(1:9, extra_css = "vertical-align:top;")
 ```
 
 # Decision curves
