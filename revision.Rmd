@@ -133,7 +133,8 @@ build_tree_order <- function(ontology_csv_path, ont_name_file = NULL) {
     eval_node <- gsub(":", "", node)
 
     genes <- genes_per_node[[node]]
-    gene_str <- if (!is.null(genes) && length(genes) > 0) paste0(" (", paste(genes, collapse=", "), ")") else ""
+    genes_vec <- if (!is.null(genes) && length(genes) > 0) genes else character(0)
+    gene_str <- if (length(genes_vec) > 0) paste0(" (", paste(genes_vec, collapse=", "), ")") else ""
 
     label <- paste0(mapped, gene_str)
 
@@ -146,7 +147,7 @@ build_tree_order <- function(ontology_csv_path, ont_name_file = NULL) {
       eval_id <- eval_node
     }
 
-    result[[length(result) + 1]] <<- list(display = display, eval_node = eval_id)
+    result[[length(result) + 1]] <<- list(display = display, eval_node = eval_id, genes = genes_vec)
 
     kids <- children_of[[node]]
     if (!is.null(kids) && length(kids) > 0) {
@@ -167,6 +168,7 @@ build_tree_order <- function(ontology_csv_path, ont_name_file = NULL) {
   data.frame(
     display = sapply(result, \(x) x$display),
     eval_node = sapply(result, \(x) x$eval_node),
+    genes = I(lapply(result, \(x) x$genes)),
     stringsAsFactors = FALSE
   )
 }
@@ -209,18 +211,18 @@ compute_gradcam_eligible <- function(model_prefix) {
   gene_gc$value[is.na(gene_gc$value)] <- 0
 
   # Per ontology: check if any gene > 97.5th percentile
-  eligible_ontologies <- character(0)
+  eligible <- list()
   for (ont_id in unique(gene_gc$ontology)) {
     sub <- gene_gc[gene_gc$ontology == ont_id, ]
-    # Get all grad-CAM values for this ontology (not just gene positions)
     all_vals <- gc$value[gc$ontology == ont_id]
     q975 <- quantile(all_vals, 0.975)
-    if (any(sub$value > q975)) {
-      eligible_ontologies <- c(eligible_ontologies, ont_id)
+    genes_above <- sub$feature[sub$value > q975]
+    if (length(genes_above) > 0) {
+      eligible[[ont_id]] <- as.character(genes_above)
     }
   }
 
-  eligible_ontologies
+  eligible
 }
 ```
 
@@ -330,7 +332,7 @@ for (i in 1:nrow(disc_cal_data)) {
 
       # Criterion 3: grad-CAM >97.5th percentile (at least 1 gene in this ontology)
       gc_eligible <- gradcam_eligible[[m$model_prefix]]
-      valid_c3 <- if (!is.null(gc_eligible) && length(gc_eligible) > 0) dn$node %in% gc_eligible else FALSE
+      valid_c3 <- if (!is.null(gc_eligible) && length(gc_eligible) > 0) dn$node %in% names(gc_eligible) else FALSE
 
       valid_c1 <- isTRUE(valid_c1)
       valid_c2 <- isTRUE(valid_c2)
@@ -338,16 +340,31 @@ for (i in 1:nrow(disc_cal_data)) {
       c1_str <- if (valid_c1) "\U2713" else ""
       c2_str <- if (valid_c2) "\U2713" else ""
       c3_str <- if (valid_c3) "\U2713" else ""
-      valid_all <- if (valid_c1 && valid_c2 && valid_c3) "*" else ""
-      # Get tree display name
+
+      # Get tree display name and mark eligible genes with asterisk
       tree_display <- dn$original_id
       if (!is.null(tree_order)) {
         idx <- match(dn$node, tree_order$eval_node)
-        if (!is.na(idx)) tree_display <- tree_order$display[idx]
+        if (!is.na(idx)) {
+          # Get genes for this node and mark eligible ones
+          node_genes <- tree_order$genes[[idx]]
+          eligible_genes <- if (!is.null(gc_eligible)) gc_eligible[[dn$node]] else character(0)
+          if (length(node_genes) > 0) {
+            marked_genes <- sapply(node_genes, \(g) if (g %in% eligible_genes) paste0(g, "*") else g)
+            gene_str <- paste0(" (", paste(marked_genes, collapse = ", "), ")")
+          } else {
+            gene_str <- ""
+          }
+          # Rebuild display with marked genes
+          raw_display <- tree_order$display[idx]
+          # Remove old gene string if present
+          raw_no_genes <- sub(" \\(.*\\)$", "", raw_display)
+          tree_display <- paste0(raw_no_genes, gene_str)
+        }
       }
 
       rows[[length(rows) + 1]] <- data.frame(
-        Ontology = if (j == 1) paste0(valid_all, tree_display) else "",
+        Ontology = if (j == 1) tree_display else "",
         Threshold = if (j == 1) sprintf("%.2f", dn$threshold) else "",
         `NB Model` = if (j == 1) ifelse(is.nan(dn$nb_model), "—", sprintf("%.4f", dn$nb_model)) else "",
         `NB Ref` = if (j == 1) ifelse(is.na(dn$nb_ref), "—", sprintf("%.4f", dn$nb_ref)) else "",
