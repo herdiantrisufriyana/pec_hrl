@@ -130,9 +130,9 @@ for (i in 1:nrow(disc_cal_data)) {
   print(
     combined |>
       kable(caption = table_caption, format = "html") |>
-      kable_classic() |>
-      scroll_box(height = "400px") |>
-      column_spec(1:7, extra_css = "vertical-align:top;")
+      kable_classic(full_width = TRUE) |>
+      kable_styling(font_size = 12) |>
+      scroll_box(height = "400px", width = "100%")
   )
 
   cat("\n\n")
@@ -311,9 +311,9 @@ for (i in 1:nrow(models)) {
   print(
     tbl |>
       kable(caption = table_caption, format = "html") |>
-      kable_classic() |>
-      scroll_box(height = "400px") |>
-      column_spec(1:8, extra_css = "vertical-align:top;")
+      kable_classic(full_width = TRUE) |>
+      kable_styling(font_size = 12) |>
+      scroll_box(height = "400px", width = "100%")
   )
 
   cat("\n\n")
