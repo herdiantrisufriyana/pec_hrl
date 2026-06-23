@@ -34,66 +34,139 @@ sessionInfo()
 
 # 1. AUROC, AUPRC, and calibration
 
-```{r Load discrimination and calibration, include=FALSE}
+```{r Helper function for computing AUPRC from ROC data, include=FALSE}
+compute_auprc <- function(disc_rds, cal_rds) {
+  roc <- disc_rds$plot$data
+  d <- cal_rds$dist$data
+  p <- d$n[d$obs == "1"] / sum(d$n)
+  precision <- (roc$tpr * p) / (roc$tpr * p + (1 - roc$tnr) * (1 - p))
+  recall <- roc$tpr
+  precision[is.nan(precision)] <- 1
+  ord <- order(recall, precision)
+  recall <- recall[ord]
+  precision <- precision[ord]
+  idx <- !duplicated(recall)
+  recall <- recall[idx]
+  precision <- precision[idx]
+  sum(diff(recall) * (precision[-1] + precision[-length(precision)]) / 2, na.rm = TRUE)
+}
+
+extract_metrics_for_model <- function(prefix, eval_dir, ont_name_file = NULL) {
+  # Get all discrimination files (root + ontology)
+  all_disc <- list.files(eval_dir, pattern = paste0("^", prefix, "_(root|ONT[0-9]+)_discrimination\\.rds$"), full.names = TRUE)
+
+  results <- lapply(all_disc, function(f) {
+    node <- str_extract(basename(f), "root|ONT[0-9]+")
+    disc <- readRDS(f)
+    cal_f <- sub("_discrimination\\.rds$", "_calibration.rds", f)
+    cal <- if (file.exists(cal_f)) readRDS(cal_f) else NULL
+
+    auroc <- disc$metrics$estimate
+    auroc_ci <- disc$metrics$ci
+    auprc <- if (!is.null(cal)) tryCatch(compute_auprc(disc, cal), error = function(e) NA) else NA
+    rmse <- if (!is.null(cal)) cal$metrics$estimate[3] else NA
+    rmse_ci <- if (!is.null(cal)) cal$metrics$ci[3] else NA
+
+    # Map ONT ID to original
+    original_id <- node
+    if (!is.null(ont_name_file) && file.exists(ont_name_file) && node != "root") {
+      ont_names <- read.csv(ont_name_file)
+      ont_colon <- str_replace(node, "ONT", "ONT:")
+      m <- ont_names[ont_names$new_oid == ont_colon, ]
+      if (nrow(m) > 0) original_id <- m$old_oid[1]
+    }
+
+    data.frame(node = node, original_id = original_id,
+               auroc = auroc, auroc_ci = auroc_ci,
+               auprc = auprc, rmse = rmse, rmse_ci = rmse_ci)
+  })
+
+  do.call(rbind, results)
+}
+```
+
+```{r Load all metrics for all models, include=FALSE}
 disc_cal_data <- models |>
   rowwise() |>
   mutate(
-    disc = list(readRDS(paste0("data/eval/", model_prefix, "_root_discrimination.rds"))),
-    cal = list(readRDS(paste0("data/eval/", model_prefix, "_root_calibration.rds"))),
-    auroc = disc$metrics$estimate,
-    auroc_ci = disc$metrics$ci,
-    prevalence = {
-      d <- cal$dist$data
-      d$n[d$obs == "1"] / sum(d$n)
-    },
-    auprc = {
-      roc <- disc$plot$data
-      p <- prevalence
-      precision <- (roc$tpr * p) / (roc$tpr * p + (1 - roc$tnr) * (1 - p))
-      recall <- roc$tpr
-      precision[is.nan(precision)] <- 1
-      ord <- order(recall, precision)
-      recall <- recall[ord]
-      precision <- precision[ord]
-      idx <- !duplicated(recall)
-      recall <- recall[idx]
-      precision <- precision[idx]
-      sum(diff(recall) * (precision[-1] + precision[-length(precision)]) / 2, na.rm = TRUE)
-    },
-    rmse = cal$metrics$estimate[3],
-    rmse_ci = cal$metrics$ci[3]
+    ont_name_file = paste0("data/ontology/", model_prefix, ".csv"),
+    metrics_dev = list(extract_metrics_for_model(model_prefix, "data/eval_train/", ont_name_file)),
+    metrics_test = list(extract_metrics_for_model(model_prefix, "data/eval/", ont_name_file))
   ) |>
   ungroup()
 ```
 
-```{r Combined metrics table, echo=FALSE}
-disc_cal_data |>
-  transmute(
-    Model = model_id, Figure = figure_ref, Subtype = pe_subtype,
-    `Associated Factor` = associated_factor,
-    `AUC-ROC` = sprintf("%.3f (%.3f, %.3f)", auroc, auroc - auroc_ci, auroc + auroc_ci),
-    `AUC-PRC` = sprintf("%.3f", auprc),
-    RMSE = sprintf("%.3f (±%.4f)", rmse, rmse_ci)
-  ) |>
-  kable(caption = "Table 1. Root-level discrimination (AUC-ROC, AUC-PRC) and calibration (RMSE) on the test set.", format = "html") |>
-  kable_classic() |> column_spec(1:7, extra_css = "vertical-align:top;")
+```{r Per-model tables, echo=FALSE, results='asis'}
+fmt_auroc <- function(a, ci) sprintf("%.3f (%.3f, %.3f)", a, a - ci, a + ci)
+fmt_val <- function(x) ifelse(is.na(x), "—", sprintf("%.3f", x))
+fmt_rmse <- function(r, ci) ifelse(is.na(r), "—", sprintf("%.3f (±%.4f)", r, ci))
+
+for (i in 1:nrow(disc_cal_data)) {
+  m <- disc_cal_data[i, ]
+  caption <- paste0("Table 1.", i, ". ", m$pe_subtype, " — ", m$associated_factor,
+                     " (Fig ", m$figure_ref, ", ", m$ontology_type, ")")
+
+  dev <- m$metrics_dev[[1]] |> arrange(node != "root", node)
+  test <- m$metrics_test[[1]] |> arrange(node != "root", node)
+
+  combined <- dev |>
+    select(original_id) |>
+    cbind(
+      dev |> transmute(
+        `AUC-ROC (Dev)` = fmt_auroc(auroc, auroc_ci),
+        `AUC-PRC (Dev)` = fmt_val(auprc),
+        `RMSE (Dev)` = fmt_rmse(rmse, rmse_ci)
+      )
+    )
+
+  # Match test rows to dev rows by node
+  test_matched <- dev |>
+    select(node) |>
+    left_join(test |> select(node, auroc, auroc_ci, auprc, rmse, rmse_ci), by = "node")
+
+  combined <- combined |>
+    cbind(
+      test_matched |> transmute(
+        `AUC-ROC (Test)` = fmt_auroc(auroc, auroc_ci),
+        `AUC-PRC (Test)` = fmt_val(auprc),
+        `RMSE (Test)` = fmt_rmse(rmse, rmse_ci)
+      )
+    ) |>
+    rename(Ontology = original_id)
+
+  cat(sprintf("\n## %s\n\n", caption))
+
+  print(
+    combined |>
+      kable(caption = caption, format = "html") |>
+      kable_classic() |>
+      scroll_box(height = "400px") |>
+      column_spec(1:7, extra_css = "vertical-align:top;")
+  )
+
+  cat("\n\n")
+}
 ```
 
 # 2. ROC curves
 
 ```{r ROC curves, echo=FALSE, fig.width=12, fig.height=8, warning=FALSE}
-roc_plots <- disc_cal_data |>
+roc_plots <- models |>
   rowwise() |>
-  mutate(plot = list({
-    df <- disc$plot$data
-    ggplot(df, aes(x = 1 - tnr, y = tpr)) +
-      geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
-      geom_path(color = "steelblue", linewidth = 1) +
-      labs(title = paste0("Fig ", figure_ref, ": ", model_id),
-           subtitle = sprintf("AUC = %.3f", auroc),
-           x = "1 - Specificity (FPR)", y = "Sensitivity (TPR)") +
-      coord_equal() + theme_minimal() + theme(plot.title = element_text(size = 10))
-  })) |> pull(plot)
+  mutate(
+    disc = list(readRDS(paste0("data/eval/", model_prefix, "_root_discrimination.rds"))),
+    auroc = disc$metrics$estimate,
+    plot = list({
+      df <- disc$plot$data
+      ggplot(df, aes(x = 1 - tnr, y = tpr)) +
+        geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
+        geom_path(color = "steelblue", linewidth = 1) +
+        labs(title = paste0("Fig ", figure_ref, ": ", model_id),
+             subtitle = sprintf("AUC = %.3f", auroc),
+             x = "1 - Specificity (FPR)", y = "Sensitivity (TPR)") +
+        coord_equal() + theme_minimal() + theme(plot.title = element_text(size = 10))
+    })
+  ) |> pull(plot)
 ggarrange(plotlist = roc_plots, ncol = 3, nrow = 3)
 ```
 
