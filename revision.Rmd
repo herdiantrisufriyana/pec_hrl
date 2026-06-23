@@ -234,44 +234,53 @@ dec_dev <- models |>
 ```
 
 ```{r Combined threshold and confusion matrix table, echo=FALSE}
-dev_nb <- thr_dev |>
-  left_join(dec_dev |> select(model_id, ta_intercept, ta_slope), by = "model_id") |>
-  rowwise() |>
-  mutate(
-    threshold = thr$ref_value[1],
-    nb_model = thr$avg[thr$metric == "nb"],
-    nb_treat_all = ta_intercept + ta_slope * threshold,
-    nb_ref = max(nb_treat_all, 0),
-    nb_diff = nb_model - nb_ref
-  ) |>
-  ungroup()
+fmt_cm <- function(x, lb, ub) ifelse(is.nan(x) | is.na(x), "—", sprintf("%.1f%% (%.1f, %.1f)", x, lb, ub))
 
-test_cm <- thr_test |>
-  rowwise() |>
-  mutate(
-    ppv = thr$avg[thr$metric == "ppv"], ppv_lb = thr$lb[thr$metric == "ppv"], ppv_ub = thr$ub[thr$metric == "ppv"],
-    tpr = thr$avg[thr$metric == "tpr"], tpr_lb = thr$lb[thr$metric == "tpr"], tpr_ub = thr$ub[thr$metric == "tpr"],
-    npv = thr$avg[thr$metric == "npv"], npv_lb = thr$lb[thr$metric == "npv"], npv_ub = thr$ub[thr$metric == "npv"],
-    tnr = thr$avg[thr$metric == "tnr"], tnr_lb = thr$lb[thr$metric == "tnr"], tnr_ub = thr$ub[thr$metric == "tnr"]
-  ) |>
-  ungroup()
+extract_cm <- function(thr_rds) {
+  metrics <- c("ppv", "tpr", "npv", "tnr")
+  lapply(metrics, function(m) {
+    data.frame(
+      metric = toupper(m),
+      avg = thr_rds$avg[thr_rds$metric == m],
+      lb = thr_rds$lb[thr_rds$metric == m],
+      ub = thr_rds$ub[thr_rds$metric == m]
+    )
+  }) |> do.call(rbind, args = _)
+}
 
-dev_nb |>
-  left_join(test_cm |> select(model_id, ppv, ppv_lb, ppv_ub, tpr, tpr_lb, tpr_ub, npv, npv_lb, npv_ub, tnr, tnr_lb, tnr_ub), by = "model_id") |>
-  transmute(
-    Model = model_id, Figure = figure_ref,
-    Criteria = validation_criteria,
-    Threshold = sprintf("%.2f", threshold),
-    `NB Model (Dev)` = ifelse(is.nan(nb_model), "—", sprintf("%.4f", nb_model)),
-    `NB Ref (Dev)` = sprintf("%.4f", nb_ref),
-    `NB Diff (Dev)` = ifelse(is.nan(nb_diff), "—", sprintf("%.4f", nb_diff)),
-    `PPV (Test)` = ifelse(is.nan(ppv), "—", sprintf("%.1f%% (%.1f, %.1f)", ppv, ppv_lb, ppv_ub)),
-    `TPR (Test)` = ifelse(is.nan(tpr), "—", sprintf("%.1f%% (%.1f, %.1f)", tpr, tpr_lb, tpr_ub)),
-    `NPV (Test)` = ifelse(is.nan(npv), "—", sprintf("%.1f%% (%.1f, %.1f)", npv, npv_lb, npv_ub)),
-    `TNR (Test)` = ifelse(is.nan(tnr), "—", sprintf("%.1f%% (%.1f, %.1f)", tnr, tnr_lb, tnr_ub))
-  ) |>
-  kable(caption = "Table 8. Threshold selection (dev set net benefit) and confusion matrix metrics (test set, 95% CIs).", format = "html") |>
-  kable_classic() |> column_spec(1:11, extra_css = "vertical-align:top;")
+rows <- list()
+for (i in 1:nrow(models)) {
+  m <- models[i, ]
+  td <- thr_dev[i, ]
+  tt <- thr_test[i, ]
+  dd <- dec_dev[i, ]
+
+  threshold <- td$thr[[1]]$ref_value[1]
+  nb_model <- td$thr[[1]]$avg[td$thr[[1]]$metric == "nb"]
+  nb_treat_all <- dd$ta_intercept + dd$ta_slope * threshold
+  nb_ref <- max(nb_treat_all, 0)
+
+  dev_cm <- extract_cm(td$thr[[1]])
+  test_cm <- extract_cm(tt$thr[[1]])
+
+  for (j in 1:4) {
+    rows[[length(rows) + 1]] <- data.frame(
+      Model = if (j == 1) m$model_id else "",
+      Figure = if (j == 1) m$figure_ref else "",
+      Threshold = if (j == 1) sprintf("%.2f", threshold) else "",
+      `NB Model` = if (j == 1) ifelse(is.nan(nb_model), "—", sprintf("%.4f", nb_model)) else "",
+      `NB Ref` = if (j == 1) sprintf("%.4f", nb_ref) else "",
+      Metrics = dev_cm$metric[j],
+      Dev = fmt_cm(dev_cm$avg[j], dev_cm$lb[j], dev_cm$ub[j]),
+      Test = fmt_cm(test_cm$avg[j], test_cm$lb[j], test_cm$ub[j]),
+      check.names = FALSE
+    )
+  }
+}
+
+do.call(rbind, rows) |>
+  kable(caption = "Table 8. Threshold selection (dev set net benefit) and confusion matrix metrics (dev and test set, 95% CIs).", format = "html") |>
+  kable_classic() |> column_spec(1:8, extra_css = "vertical-align:top;")
 ```
 
 # Decision curves

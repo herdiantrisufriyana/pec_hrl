@@ -8687,7 +8687,7 @@ on the test set at the selected thresholds.</p>
 <table class=" lightable-classic" style="font-family: &quot;Arial Narrow&quot;, &quot;Source Sans Pro&quot;, sans-serif; margin-left: auto; margin-right: auto;">
 <caption>
 Table 8. Threshold selection (dev set net benefit) and confusion matrix
-metrics (test set, 95% CIs).
+metrics (dev and test set, 95% CIs).
 </caption>
 <thead>
 <tr>
@@ -8698,31 +8698,22 @@ Model
 Figure
 </th>
 <th style="text-align:left;">
-Criteria
-</th>
-<th style="text-align:left;">
 Threshold
 </th>
 <th style="text-align:left;">
-NB Model (Dev)
+NB Model
 </th>
 <th style="text-align:left;">
-NB Ref (Dev)
+NB Ref
 </th>
 <th style="text-align:left;">
-NB Diff (Dev)
+Metrics
 </th>
 <th style="text-align:left;">
-PPV (Test)
+Dev
 </th>
 <th style="text-align:left;">
-TPR (Test)
-</th>
-<th style="text-align:left;">
-NPV (Test)
-</th>
-<th style="text-align:left;">
-TNR (Test)
+Test
 </th>
 </tr>
 </thead>
@@ -8735,9 +8726,6 @@ LOPE_MSE
 3A
 </td>
 <td style="text-align:left;vertical-align:top;">
-PPV/TPR
-</td>
-<td style="text-align:left;vertical-align:top;">
 0.36
 </td>
 <td style="text-align:left;vertical-align:top;">
@@ -8747,16 +8735,73 @@ PPV/TPR
 0.0000
 </td>
 <td style="text-align:left;vertical-align:top;">
-0.1200
+PPV
+</td>
+<td style="text-align:left;vertical-align:top;">
+58.1% (53.4, 62.8)
 </td>
 <td style="text-align:left;vertical-align:top;">
 2.8% (2.3, 3.2)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+TPR
+</td>
+<td style="text-align:left;vertical-align:top;">
+100.0% (100.0, 100.0)
+</td>
+<td style="text-align:left;vertical-align:top;">
+100.0% (100.0, 100.0)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+NPV
 </td>
 <td style="text-align:left;vertical-align:top;">
 100.0% (100.0, 100.0)
 </td>
 <td style="text-align:left;vertical-align:top;">
 —
+</td>
+</tr>
+<tr>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+TNR
+</td>
+<td style="text-align:left;vertical-align:top;">
+80.8% (77.5, 84.0)
 </td>
 <td style="text-align:left;vertical-align:top;">
 0.0% (0.0, 0.0)
@@ -8770,9 +8815,6 @@ LOPE_CHOR
 3B
 </td>
 <td style="text-align:left;vertical-align:top;">
-PPV/TPR
-</td>
-<td style="text-align:left;vertical-align:top;">
 0.11
 </td>
 <td style="text-align:left;vertical-align:top;">
@@ -8782,16 +8824,73 @@ PPV/TPR
 0.1087
 </td>
 <td style="text-align:left;vertical-align:top;">
-0.0213
+PPV
+</td>
+<td style="text-align:left;vertical-align:top;">
+22.9% (20.2, 25.6)
 </td>
 <td style="text-align:left;vertical-align:top;">
 3.0% (2.6, 3.4)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+TPR
 </td>
 <td style="text-align:left;vertical-align:top;">
 100.0% (100.0, 100.0)
 </td>
 <td style="text-align:left;vertical-align:top;">
+100.0% (100.0, 100.0)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+NPV
+</td>
+<td style="text-align:left;vertical-align:top;">
 —
+</td>
+<td style="text-align:left;vertical-align:top;">
+—
+</td>
+</tr>
+<tr>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+TNR
+</td>
+<td style="text-align:left;vertical-align:top;">
+0.0% (0.0, 0.0)
 </td>
 <td style="text-align:left;vertical-align:top;">
 0.0% (0.0, 0.0)
@@ -8805,9 +8904,6 @@ LOPE_HELLP
 3C
 </td>
 <td style="text-align:left;vertical-align:top;">
-PPV/TPR
-</td>
-<td style="text-align:left;vertical-align:top;">
 0.29
 </td>
 <td style="text-align:left;vertical-align:top;">
@@ -8817,16 +8913,73 @@ PPV/TPR
 0.0000
 </td>
 <td style="text-align:left;vertical-align:top;">
-0.0400
+PPV
+</td>
+<td style="text-align:left;vertical-align:top;">
+34.9% (30.5, 39.2)
 </td>
 <td style="text-align:left;vertical-align:top;">
 3.4% (3.0, 3.9)
 </td>
+</tr>
+<tr>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+TPR
+</td>
+<td style="text-align:left;vertical-align:top;">
+86.1% (81.6, 90.7)
+</td>
 <td style="text-align:left;vertical-align:top;">
 100.0% (100.0, 100.0)
 </td>
+</tr>
+<tr>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+NPV
+</td>
+<td style="text-align:left;vertical-align:top;">
+93.5% (91.4, 95.5)
+</td>
 <td style="text-align:left;vertical-align:top;">
 —
+</td>
+</tr>
+<tr>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+TNR
+</td>
+<td style="text-align:left;vertical-align:top;">
+52.9% (48.4, 57.3)
 </td>
 <td style="text-align:left;vertical-align:top;">
 0.5% (0.4, 0.6)
@@ -8840,9 +8993,6 @@ EOPE_LSE
 4A
 </td>
 <td style="text-align:left;vertical-align:top;">
-NPV/TNR
-</td>
-<td style="text-align:left;vertical-align:top;">
 0.25
 </td>
 <td style="text-align:left;vertical-align:top;">
@@ -8852,16 +9002,73 @@ NPV/TNR
 0.1875
 </td>
 <td style="text-align:left;vertical-align:top;">
-0.0525
+PPV
+</td>
+<td style="text-align:left;vertical-align:top;">
+43.1% (40.7, 45.4)
 </td>
 <td style="text-align:left;vertical-align:top;">
 0.8% (0.7, 1.0)
 </td>
+</tr>
+<tr>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+TPR
+</td>
+<td style="text-align:left;vertical-align:top;">
+100.0% (100.0, 100.0)
+</td>
+<td style="text-align:left;vertical-align:top;">
+—
+</td>
+</tr>
+<tr>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+NPV
+</td>
 <td style="text-align:left;vertical-align:top;">
 —
 </td>
 <td style="text-align:left;vertical-align:top;">
 —
+</td>
+</tr>
+<tr>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+TNR
+</td>
+<td style="text-align:left;vertical-align:top;">
+0.0% (0.0, 0.0)
 </td>
 <td style="text-align:left;vertical-align:top;">
 0.0% (0.0, 0.0)
@@ -8875,9 +9082,6 @@ EOPE_T1
 4B
 </td>
 <td style="text-align:left;vertical-align:top;">
-NPV/TNR
-</td>
-<td style="text-align:left;vertical-align:top;">
 0.25
 </td>
 <td style="text-align:left;vertical-align:top;">
@@ -8887,16 +9091,73 @@ NPV/TNR
 0.1875
 </td>
 <td style="text-align:left;vertical-align:top;">
-0.0725
+PPV
+</td>
+<td style="text-align:left;vertical-align:top;">
+44.4% (42.2, 46.6)
 </td>
 <td style="text-align:left;vertical-align:top;">
 0.9% (0.7, 1.2)
 </td>
+</tr>
+<tr>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+TPR
+</td>
+<td style="text-align:left;vertical-align:top;">
+100.0% (100.0, 100.0)
+</td>
+<td style="text-align:left;vertical-align:top;">
+—
+</td>
+</tr>
+<tr>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+NPV
+</td>
 <td style="text-align:left;vertical-align:top;">
 —
 </td>
 <td style="text-align:left;vertical-align:top;">
 —
+</td>
+</tr>
+<tr>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+TNR
+</td>
+<td style="text-align:left;vertical-align:top;">
+0.0% (0.0, 0.0)
 </td>
 <td style="text-align:left;vertical-align:top;">
 0.0% (0.0, 0.0)
@@ -8910,9 +9171,6 @@ EOPE_T2
 4C
 </td>
 <td style="text-align:left;vertical-align:top;">
-NPV/TNR
-</td>
-<td style="text-align:left;vertical-align:top;">
 0.44
 </td>
 <td style="text-align:left;vertical-align:top;">
@@ -8922,16 +9180,73 @@ NPV/TNR
 0.0000
 </td>
 <td style="text-align:left;vertical-align:top;">
-0.1900
+PPV
+</td>
+<td style="text-align:left;vertical-align:top;">
+78.2% (73.8, 82.6)
 </td>
 <td style="text-align:left;vertical-align:top;">
 —
 </td>
+</tr>
+<tr>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+TPR
+</td>
+<td style="text-align:left;vertical-align:top;">
+56.4% (52.6, 60.2)
+</td>
 <td style="text-align:left;vertical-align:top;">
 —
+</td>
+</tr>
+<tr>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+NPV
+</td>
+<td style="text-align:left;vertical-align:top;">
+74.6% (72.5, 76.7)
 </td>
 <td style="text-align:left;vertical-align:top;">
 99.3% (99.1, 99.5)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+TNR
+</td>
+<td style="text-align:left;vertical-align:top;">
+89.4% (87.5, 91.4)
 </td>
 <td style="text-align:left;vertical-align:top;">
 100.0% (100.0, 100.0)
@@ -8945,9 +9260,6 @@ EOPE_HELLP
 4D
 </td>
 <td style="text-align:left;vertical-align:top;">
-NPV/TNR
-</td>
-<td style="text-align:left;vertical-align:top;">
 0.17
 </td>
 <td style="text-align:left;vertical-align:top;">
@@ -8957,16 +9269,73 @@ NPV/TNR
 0.2675
 </td>
 <td style="text-align:left;vertical-align:top;">
-0.0625
+PPV
+</td>
+<td style="text-align:left;vertical-align:top;">
+70.7% (68.1, 73.2)
 </td>
 <td style="text-align:left;vertical-align:top;">
 2.5% (1.8, 3.1)
 </td>
+</tr>
+<tr>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+TPR
+</td>
+<td style="text-align:left;vertical-align:top;">
+81.8% (79.5, 84.0)
+</td>
 <td style="text-align:left;vertical-align:top;">
 —
 </td>
+</tr>
+<tr>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+NPV
+</td>
+<td style="text-align:left;vertical-align:top;">
+83.3% (80.9, 85.7)
+</td>
 <td style="text-align:left;vertical-align:top;">
 100.0% (100.0, 100.0)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+</td>
+<td style="text-align:left;vertical-align:top;">
+TNR
+</td>
+<td style="text-align:left;vertical-align:top;">
+72.8% (70.1, 75.5)
 </td>
 <td style="text-align:left;vertical-align:top;">
 61.1% (60.0, 62.2)
