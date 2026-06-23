@@ -1,0 +1,35 @@
+abbreviation,stands_for1,stands_for2
+E_PRE_ESE,Endometrium,Early-secretory phase
+E_PRE_MSE,Endometrium,Mid-secretory phase
+E_PRE_LSE,Endometrium,Late-secretory phase
+D_EPND_EPID,Decidua,"Ectopic, intermediate"
+D_EPND_IPID,Decidua,"Intrauterine, intermediate"
+D_EPND_IPCD,Decidua,"Intrauterine, confluent"
+P_TE_T1,Placenta,First trimester
+P_TE_T2,Placenta,Second trimester
+C2_NC2_CHOR2,Placenta,"Second trimester, chorioamnionitis"
+C3_NC3_CHOR3,Placenta,"Third trimester, chorioamnionitis"
+H2_NH2_HELLP2,Placenta,"Second trimester, HELLP"
+H3_NH3_HELLP3,Placenta,"Third trimester, HELLP"
+OD_C_EOSPE,PE,"Early-onset, severe"
+OD_C_LOSPE,PE,"Late-onset, severe"
+OD_C_EOMPE_FGR,"PE, FGR","Early-onset, mild-to-moderate"
+OD_C_LOMPE_FGR,"PE, FGR","Late-onset, mild-to-moderate"
+OD_C_EOSPE_FGR,"PE, FGR","Early-onset, severe"
+OD_C_LOSPE_FGR,"PE, FGR","Late-onset, severe"
+OD_C_SIM_LOMPE,Superimposed PE,"Late-onset, mild-to-moderate"
+OD_C_SIM_EOSPE,Superimposed PE,"Early-onset, severe"
+OD_C_SIM_EOSPE_FGR,"Superimposed PE, FGR","Early-onset, severe"
+OD_C_EGH,Gestational hypertension,Early-onset
+OD_C_LGH,Gestational hypertension,Late-onset
+OD_C_LGH_FGR,"Gestational hypertension, FGR",Late-onset
+OD_C_LCH,Chronic hypertension,Late-onset
+OD_C_ECH_FGR,"Chronic hypertension, FGR",Early-onset
+OD_C_LCH_FGR,"Chronic hypertension, FGR",Late-onset
+OD_C_LFGR,FGR,Late-onset
+OV_C_EOSPE,PE,"Early-onset, severe"
+OV_C_LOSPE,PE,"Late-onset, severe"
+OV_C_LOMPE_FGR,"PE, FGR","Late-onset, mild-to-moderate"
+OV_C_LOSPE_FGR,"PE, FGR","Late-onset, severe"
+OV_C_LGH,Gestational hypertension,Late-onset
+OV_C_LFGR,FGR,Late-onset

@@ -1,0 +1,9 @@
+Tissue,Condition,"PE: Early-onset, severe","PE: Late-onset, severe","PE, FGR: Late-onset, severe","PE, FGR: Late-onset, mild-to-moderate"
+Endometrium,Early-secretory phase,468,0,360,37
+Endometrium,Late-secretory phase,405,58,304,0
+Endometrium,Mid-secretory phase,0,72,0,0
+Placenta,First trimester,353,0,280,0
+Placenta,Second trimester,44,0,41,0
+Placenta,"Second trimester, chorioamnionitis",24,0,20,0
+Placenta,"Third trimester, chorioamnionitis",426,58,375,0
+Placenta,"Third trimester, HELLP",283,52,189,0
