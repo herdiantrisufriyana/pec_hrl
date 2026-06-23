@@ -1,0 +1,8 @@
+model_id,model_prefix,pe_subtype,associated_factor,figure_ref,validation_criteria,ontology_type
+LOPE_MSE,OD_C_LOSPE.E_PRE_MSE_cx,LOPE,Mid-secretory endometrium,3A,PPV/TPR,cx
+LOPE_CHOR,OD_C_LOSPE.C3_NC3_CHOR3_cx,LOPE,Chorioamnionitis (T3),3B,PPV/TPR,cx
+LOPE_HELLP,OD_C_LOSPE.H3_NH3_HELLP3_cx,LOPE,HELLP syndrome (T3),3C,PPV/TPR,cx
+EOPE_LSE,OD_C_EOSPE.E_PRE_LSE_cx,EOPE,Late-secretory endometrium,4A,NPV/TNR,cx
+EOPE_T1,OD_C_EOSPE.P_TE_T1_cx,EOPE,Placentation (T1),4B,NPV/TNR,cx
+EOPE_T2,OD_C_EOSPE.P_TE_T2_pea,EOPE,Placentation (T2),4C,NPV/TNR,pea
+EOPE_HELLP,OD_C_EOSPE.H3_NH3_HELLP3_cx,EOPE,HELLP syndrome (T3),4D,NPV/TNR,cx
