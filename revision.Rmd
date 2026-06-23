@@ -32,8 +32,6 @@ models <- read_csv("inst/extdata/model_registry.csv", show_col_types = FALSE)
 sessionInfo()
 ```
 
-# 1. AUROC, AUPRC, and calibration
-
 ```{r Helper function for computing AUPRC from ROC data, include=FALSE}
 compute_auprc <- function(disc_rds, cal_rds) {
   roc <- disc_rds$plot$data
@@ -103,8 +101,9 @@ fmt_rmse <- function(r, ci) ifelse(is.na(r), "—", sprintf("%.3f (±%.4f)", r, 
 
 for (i in 1:nrow(disc_cal_data)) {
   m <- disc_cal_data[i, ]
-  caption <- paste0("Table 1.", i, ". ", m$pe_subtype, " — ", m$associated_factor,
-                     " (Fig ", m$figure_ref, ", ", m$ontology_type, ")")
+  section_title <- paste0(m$pe_subtype, " — ", m$associated_factor,
+                           " (Fig ", m$figure_ref, ", ", m$ontology_type, ")")
+  table_caption <- "AUROC, AUPRC, and calibration"
 
   dev <- m$metrics_dev[[1]] |> arrange(node != "root", node)
   test <- m$metrics_test[[1]] |> arrange(node != "root", node)
@@ -126,11 +125,11 @@ for (i in 1:nrow(disc_cal_data)) {
       )
     )
 
-  cat(sprintf("\n## %s\n\n", caption))
+  cat(sprintf("\n# %s\n\n", section_title))
 
   print(
     combined |>
-      kable(caption = caption, format = "html") |>
+      kable(caption = table_caption, format = "html") |>
       kable_classic() |>
       scroll_box(height = "400px") |>
       column_spec(1:7, extra_css = "vertical-align:top;")
@@ -140,7 +139,7 @@ for (i in 1:nrow(disc_cal_data)) {
 }
 ```
 
-# 2. ROC curves
+# ROC curves
 
 ```{r ROC curves, echo=FALSE, fig.width=12, fig.height=8, warning=FALSE}
 roc_plots <- models |>
@@ -162,7 +161,7 @@ roc_plots <- models |>
 ggarrange(plotlist = roc_plots, ncol = 3, nrow = 3)
 ```
 
-# 3. Confusion matrices
+# Confusion matrices
 
 ```{r Load test thresholding, include=FALSE}
 thr_test <- models |>
@@ -195,7 +194,7 @@ thr_test |>
   kable_classic() |> column_spec(1:8, extra_css = "vertical-align:top;")
 ```
 
-# 4. Training-validation convergence
+# Training-validation convergence
 
 ```{r Load convergence data, include=FALSE}
 conv_data <- models |>
@@ -240,7 +239,7 @@ conv_auc_plots <- conv_data |>
 ggarrange(plotlist = conv_auc_plots, ncol = 3, nrow = 3, common.legend = TRUE, legend = "bottom")
 ```
 
-# 5. Threshold values
+# Threshold values
 
 ```{r Load dev thresholding, include=FALSE}
 thr_dev <- models |>
@@ -284,7 +283,7 @@ thr_dev |>
   kable_classic() |> column_spec(1:6, extra_css = "vertical-align:top;")
 ```
 
-# 6. Decision curves
+# Decision curves
 
 Decision curves from the development set, where thresholds were selected.
 
