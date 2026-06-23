@@ -451,6 +451,36 @@ for (i in 1:nrow(disc_cal_data)) {
     }
   }
 
+  # Compute C1, C2, C3 for each node in AUROC table
+  c1_vec <- c(); c2_vec <- c(); c3_vec <- c()
+  for (k in seq_len(nrow(dev))) {
+    node_k <- dev$node[k]
+    dev_thr_f <- paste0("data/eval_train/", m$model_prefix, "_", node_k, "_thresholding.rds")
+    test_thr_f <- paste0("data/eval/", m$model_prefix, "_", node_k, "_thresholding.rds")
+
+    c1_k <- FALSE; c2_k <- FALSE
+    if (file.exists(dev_thr_f) && file.exists(test_thr_f)) {
+      dev_thr <- readRDS(dev_thr_f); test_thr <- readRDS(test_thr_f)
+      for (pair in list(c("ppv","tpr"), c("npv","tnr"))) {
+        d1 <- get_metric(dev_thr, pair[1]); d2 <- get_metric(dev_thr, pair[2])
+        t1 <- get_metric(test_thr, pair[1]); t2 <- get_metric(test_thr, pair[2])
+        c1_pair <- isTRUE(is.finite(d1$lb) && d1$lb > 0 && is.finite(d2$lb) && d2$lb > 0 &&
+                          is.finite(t1$lb) && t1$lb > 0 && is.finite(t2$lb) && t2$lb > 0)
+        c2_pair <- isTRUE(!is.nan(d1$avg) && !is.nan(d2$avg) && !is.nan(t1$avg) && !is.nan(t2$avg) &&
+                          abs(d1$avg - t1$avg) <= 25 && abs(d2$avg - t2$avg) <= 25)
+        if (c1_pair) c1_k <- TRUE
+        if (c1_pair && c2_pair) c2_k <- TRUE
+      }
+    }
+
+    gc_elig <- gc_eligible
+    c3_k <- if (!is.null(gc_elig) && length(gc_elig) > 0) isTRUE(node_k %in% names(gc_elig)) else FALSE
+
+    c1_vec <- c(c1_vec, if (c1_k) "\U2713" else "")
+    c2_vec <- c(c2_vec, if (c2_k) "\U2713" else "")
+    c3_vec <- c(c3_vec, if (c3_k) "\U2713" else "")
+  }
+
   combined <- data.frame(Ontology = ontology_labels) |>
     cbind(
       data.frame(
@@ -460,6 +490,7 @@ for (i in 1:nrow(disc_cal_data)) {
         `AUC-PRC (Test)` = fmt_val(test_matched$auprc),
         `RMSE (Dev)` = fmt_rmse(dev$rmse, dev$rmse_ci),
         `RMSE (Test)` = fmt_rmse(test_matched$rmse, test_matched$rmse_ci),
+        C1 = c1_vec, C2 = c2_vec, C3 = c3_vec,
         check.names = FALSE
       )
     )
