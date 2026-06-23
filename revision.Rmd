@@ -330,8 +330,11 @@ for (i in 1:nrow(disc_cal_data)) {
 
       # Criterion 3: grad-CAM >97.5th percentile (at least 1 gene in this ontology)
       gc_eligible <- gradcam_eligible[[m$model_prefix]]
-      valid_c3 <- if (!is.null(gc_eligible)) dn$node %in% gc_eligible else FALSE
+      valid_c3 <- if (!is.null(gc_eligible) && length(gc_eligible) > 0) dn$node %in% gc_eligible else FALSE
 
+      valid_c1 <- isTRUE(valid_c1)
+      valid_c2 <- isTRUE(valid_c2)
+      valid_c3 <- isTRUE(valid_c3)
       c1_str <- if (valid_c1) "\U2713" else ""
       c2_str <- if (valid_c2) "\U2713" else ""
       c3_str <- if (valid_c3) "\U2713" else ""
