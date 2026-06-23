@@ -211,10 +211,14 @@ compute_gradcam_eligible <- function(model_prefix) {
   gene_gc$value[is.na(gene_gc$value)] <- 0
 
   # Per ontology: check if any gene > 97.5th percentile
+  # Filter to non-NA features with value > 0 (matching pec.Rmd line 11092-11093)
+  gene_gc <- gene_gc[!is.na(gene_gc$feature) & gene_gc$value > 0, ]
+
   eligible <- list()
   for (ont_id in unique(gene_gc$ontology)) {
     sub <- gene_gc[gene_gc$ontology == ont_id, ]
-    # 97.5th percentile over gene values only (not all voxels)
+    if (nrow(sub) == 0) next
+    # 97.5th percentile over positive-value gene positions only
     q975 <- quantile(sub$value, 0.975)
     genes_above <- sub$feature[sub$value > q975]
     if (length(genes_above) > 0) {
