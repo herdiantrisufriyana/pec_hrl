@@ -305,40 +305,6 @@ dec_dev_plots <- dec_dev |>
 ggarrange(plotlist = dec_dev_plots, ncol = 3, nrow = 3)
 ```
 
-## Test set (validation)
-
-```{r Load test decision, include=FALSE}
-dec_test <- models |>
-  rowwise() |>
-  mutate(
-    dec = list(readRDS(paste0("data/eval/", model_prefix, "_root_decision.rds"))),
-    ta_intercept = dec$plot$layers[[3]]$data$intercept,
-    ta_slope = dec$plot$layers[[3]]$data$slope
-  ) |>
-  ungroup()
-```
-
-```{r Test decision curve plots, echo=FALSE, fig.width=12, fig.height=8, warning=FALSE}
-dec_test_plots <- dec_test |>
-  rowwise() |>
-  mutate(plot = list({
-    df <- dec$plot$data
-    ggplot(df, aes(x = th, y = nb)) +
-      geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
-      geom_abline(intercept = ta_intercept, slope = ta_slope,
-                  linetype = "dotted", color = "darkred", linewidth = 0.8) +
-      geom_line(color = "steelblue", linewidth = 1) +
-      annotate("text", x = 0.02, y = ta_intercept + 0.005, label = "Treat all",
-               color = "darkred", hjust = 0, size = 3) +
-      annotate("text", x = 0.98, y = 0.005, label = "Treat none",
-               color = "grey50", hjust = 1, size = 3) +
-      labs(title = paste0("Fig ", figure_ref, ": ", model_id, " (Test set)"),
-           x = "Threshold probability", y = "Net benefit") +
-      xlim(0, 1) + theme_minimal() + theme(plot.title = element_text(size = 10))
-  })) |> pull(plot)
-ggarrange(plotlist = dec_test_plots, ncol = 3, nrow = 3)
-```
-
 # Threshold analysis
 
 ## Development set (threshold selection)
@@ -393,17 +359,10 @@ thr_test <- models |>
 ```
 
 ```{r Test thresholds table, echo=FALSE}
-thr_test_joined <- thr_test |>
-  left_join(dec_test |> select(model_id, ta_intercept, ta_slope), by = "model_id")
-
-thr_test_joined |>
+thr_test |>
   rowwise() |>
   mutate(
     threshold = thr$ref_value[1],
-    nb_model = thr$avg[thr$metric == "nb"],
-    nb_treat_all = ta_intercept + ta_slope * threshold,
-    nb_ref = max(nb_treat_all, 0),
-    nb_diff = nb_model - nb_ref,
     ppv = thr$avg[thr$metric == "ppv"], ppv_lb = thr$lb[thr$metric == "ppv"], ppv_ub = thr$ub[thr$metric == "ppv"],
     tpr = thr$avg[thr$metric == "tpr"], tpr_lb = thr$lb[thr$metric == "tpr"], tpr_ub = thr$ub[thr$metric == "tpr"],
     npv = thr$avg[thr$metric == "npv"], npv_lb = thr$lb[thr$metric == "npv"], npv_ub = thr$ub[thr$metric == "npv"],
@@ -413,14 +372,11 @@ thr_test_joined |>
   transmute(
     Model = model_id, Figure = figure_ref,
     Threshold = sprintf("%.2f", threshold),
-    `NB Model` = ifelse(is.nan(nb_model), "—", sprintf("%.4f", nb_model)),
-    `NB Ref` = sprintf("%.4f", nb_ref),
-    `NB Diff` = ifelse(is.nan(nb_diff), "—", sprintf("%.4f", nb_diff)),
     PPV = ifelse(is.nan(ppv), "—", sprintf("%.1f%% (%.1f, %.1f)", ppv, ppv_lb, ppv_ub)),
     TPR = ifelse(is.nan(tpr), "—", sprintf("%.1f%% (%.1f, %.1f)", tpr, tpr_lb, tpr_ub)),
     NPV = ifelse(is.nan(npv), "—", sprintf("%.1f%% (%.1f, %.1f)", npv, npv_lb, npv_ub)),
     TNR = ifelse(is.nan(tnr), "—", sprintf("%.1f%% (%.1f, %.1f)", tnr, tnr_lb, tnr_ub))
   ) |>
-  kable(caption = "Table 6. Test set: thresholds, net benefits (model vs. best reference), and performance metrics (95% CIs).", format = "html") |>
-  kable_classic() |> column_spec(1:10, extra_css = "vertical-align:top;")
+  kable(caption = "Table 6. Test set: thresholds and performance metrics (95% CIs).", format = "html") |>
+  kable_classic() |> column_spec(1:7, extra_css = "vertical-align:top;")
 ```
