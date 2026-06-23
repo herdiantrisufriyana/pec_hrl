@@ -195,7 +195,7 @@ for (i in 1:nrow(disc_cal_data)) {
       scroll_box(height = "400px", width = "100%")
   )
 
-  cat("\n\n")
+  cat("\n\n<br><br>\n\n")
 
   # --- Table B: AUROC, AUPRC, and calibration ---
   dev <- m$metrics_dev[[1]] |> arrange(node != "root", node)
