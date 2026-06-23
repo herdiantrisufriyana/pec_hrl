@@ -332,7 +332,10 @@ for (i in 1:nrow(disc_cal_data)) {
       gc_eligible <- gradcam_eligible[[m$model_prefix]]
       valid_c3 <- if (!is.null(gc_eligible)) dn$node %in% gc_eligible else FALSE
 
-      valid <- if (valid_c1 && valid_c2 && valid_c3) "Yes" else "No"
+      c1_str <- if (valid_c1) "\U2713" else ""
+      c2_str <- if (valid_c2) "\U2713" else ""
+      c3_str <- if (valid_c3) "\U2713" else ""
+      valid_all <- if (valid_c1 && valid_c2 && valid_c3) "*" else ""
       # Get tree display name
       tree_display <- dn$original_id
       if (!is.null(tree_order)) {
@@ -341,14 +344,16 @@ for (i in 1:nrow(disc_cal_data)) {
       }
 
       rows[[length(rows) + 1]] <- data.frame(
-        Ontology = if (j == 1) tree_display else "",
+        Ontology = if (j == 1) paste0(valid_all, tree_display) else "",
         Threshold = if (j == 1) sprintf("%.2f", dn$threshold) else "",
         `NB Model` = if (j == 1) ifelse(is.nan(dn$nb_model), "—", sprintf("%.4f", dn$nb_model)) else "",
         `NB Ref` = if (j == 1) ifelse(is.na(dn$nb_ref), "—", sprintf("%.4f", dn$nb_ref)) else "",
         Metrics = p$label,
         Dev = fmt_pair(d1$avg, d1$lb, d1$ub, d2$avg, d2$lb, d2$ub),
         Test = fmt_pair(t1$avg, t1$lb, t1$ub, t2$avg, t2$lb, t2$ub),
-        Valid = valid,
+        C1 = c1_str,
+        C2 = c2_str,
+        C3 = c3_str,
         check.names = FALSE
       )
     }
