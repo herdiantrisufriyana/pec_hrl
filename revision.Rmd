@@ -257,7 +257,9 @@ for (i in 1:nrow(models)) {
   m <- models[i, ]
   ont_name_file <- paste0("data/ontology/", m$model_prefix, ".csv")
 
-  dev_nodes <- extract_thr_for_model(m$model_prefix, "data/eval_train/", ont_name_file)
+  dev_nodes_raw <- extract_thr_for_model(m$model_prefix, "data/eval_train/", ont_name_file)
+  # Sort: root first, then by node name
+  dev_nodes <- dev_nodes_raw[order(sapply(dev_nodes_raw, \(x) x$node != "root"), sapply(dev_nodes_raw, \(x) x$node))]
   test_nodes <- extract_thr_for_model(m$model_prefix, "data/eval/", ont_name_file)
 
   # Index test by node name for matching
@@ -303,10 +305,7 @@ for (i in 1:nrow(models)) {
 
   tbl <- do.call(rbind, rows)
 
-  # Sort: root first, then by ontology
-  root_idx <- which(tbl$Ontology == "root")
-  other_idx <- setdiff(seq_len(nrow(tbl)), root_idx)
-  tbl <- tbl[c(root_idx, other_idx), ]
+  # No resorting needed — rows are already in order (root first from dev_nodes iteration)
 
   print(
     tbl |>
