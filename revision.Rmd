@@ -24,27 +24,17 @@ library(ggpubr)
 lapply(list.files("R/", full.names = TRUE), source)
 ```
 
-```{r Session information, echo=FALSE}
-sessionInfo()
-```
-
-# Valid models
-
 ```{r Load model registry, include=FALSE}
 models <- read_csv("inst/extdata/model_registry.csv", show_col_types = FALSE)
 ```
 
-```{r Model registry table, echo=FALSE}
-models |>
-  select(-model_prefix, -ontology_type) |>
-  kable(caption = "Table 1. The 7 validated pathogenesis models.", format = "html") |>
-  kable_classic() |>
-  column_spec(1:5, extra_css = "vertical-align:top;")
+```{r Session information, echo=FALSE}
+sessionInfo()
 ```
 
-# Model discrimination (AUC-ROC)
+# 1. AUROC
 
-```{r Load root discrimination, include=FALSE}
+```{r Load discrimination, include=FALSE}
 disc_data <- models |>
   rowwise() |>
   mutate(
@@ -55,156 +45,59 @@ disc_data <- models |>
   ungroup()
 ```
 
-## Root-level AUC-ROC
-
-DI-VNN evaluates at specific ontology nodes, not root. Root-level AUC near 0.5
-is expected — the model's value is in identifying *which* ontology nodes are
-predictive.
-
-```{r Root AUROC table, echo=FALSE}
+```{r AUROC table, echo=FALSE}
 disc_data |>
   transmute(
-    `Model` = model_id,
-    `PE Subtype` = pe_subtype,
+    Model = model_id, Figure = figure_ref, Subtype = pe_subtype,
     `Associated Factor` = associated_factor,
-    `Figure` = figure_ref,
     `AUC-ROC` = sprintf("%.3f (%.3f, %.3f)", auroc, auroc - auroc_ci, auroc + auroc_ci)
   ) |>
-  kable(caption = "Table 2. Root-level AUC-ROC.", format = "html") |>
-  kable_classic() |>
-  column_spec(1:5, extra_css = "vertical-align:top;")
+  kable(caption = "Table 1. Root-level AUC-ROC (test set).", format = "html") |>
+  kable_classic() |> column_spec(1:5, extra_css = "vertical-align:top;")
 ```
 
-## Ontology-level AUC-ROC summary
+# 2. AUPRC
 
-```{r Load ontology discrimination, include=FALSE}
-ont_disc <- models |>
+```{r Compute AUPRC, include=FALSE}
+auprc_data <- models |>
   rowwise() |>
   mutate(
-    files = list(list.files("data/eval/", pattern = paste0("^", model_prefix, "_ONT[0-9]+_discrimination\\.rds$"), full.names = TRUE))
-  ) |>
-  unnest(files) |>
-  rowwise() |>
-  mutate(
-    ontology = str_extract(files, "ONT[0-9]+"),
-    d = list(readRDS(files)),
-    auroc = d$metrics$estimate,
-    auroc_ci = d$metrics$ci
-  ) |>
-  ungroup()
-```
-
-```{r Ontology AUROC summary table, echo=FALSE}
-ont_disc |>
-  group_by(model_id, pe_subtype, associated_factor, figure_ref) |>
-  summarize(
-    n = n(),
-    min = min(auroc), max = max(auroc), median = median(auroc),
-    .groups = "drop"
-  ) |>
-  transmute(
-    Model = model_id, Figure = figure_ref,
-    `N Ontologies` = n,
-    `AUC-ROC Range` = sprintf("%.3f – %.3f", min, max),
-    `Median` = sprintf("%.3f", median)
-  ) |>
-  kable(caption = "Table 3. Ontology-level AUC-ROC summary.", format = "html") |>
-  kable_classic() |>
-  column_spec(1:5, extra_css = "vertical-align:top;")
-```
-
-## Ontology-level detailed metrics
-
-```{r Load ontology detail, include=FALSE}
-ont_detail <- models |>
-  rowwise() |>
-  mutate(
-    ont_name_file = paste0("data/ontology/", model_prefix, ".csv"),
-    ont_names = list(if (file.exists(ont_name_file)) read.csv(ont_name_file) else NULL),
-    files = list(list.files("data/eval/", pattern = paste0("^", model_prefix, "_ONT.+_discrimination\\.rds$"), full.names = TRUE))
-  ) |>
-  unnest(files) |>
-  rowwise() |>
-  mutate(
-    ontology = str_extract(files, "ONT[0-9]+"),
-    ont_id_colon = str_replace(ontology, "ONT", "ONT:"),
-    original_id = {
-      if (!is.null(ont_names)) {
-        m <- ont_names[ont_names$new_oid == ont_id_colon, ]
-        if (nrow(m) > 0) m$old_oid[1] else ontology
-      } else ontology
+    disc = list(readRDS(paste0("data/eval/", model_prefix, "_root_discrimination.rds"))),
+    cal = list(readRDS(paste0("data/eval/", model_prefix, "_root_calibration.rds"))),
+    prevalence = {
+      d <- cal$dist$data
+      d$n[d$obs == "1"] / sum(d$n)
     },
-    d = list(readRDS(files)),
-    auroc = d$metrics$estimate, auroc_ci = d$metrics$ci,
-    thr_f = sub("_discrimination\\.rds$", "_thresholding.rds", files),
-    thr = list(if (file.exists(thr_f)) readRDS(thr_f) else NULL),
-    threshold = if (!is.null(thr)) thr$ref_value[1] else NA_real_,
-    ppv = if (!is.null(thr)) thr$avg[thr$metric == "ppv"] else NA_real_,
-    ppv_lb = if (!is.null(thr)) thr$lb[thr$metric == "ppv"] else NA_real_,
-    ppv_ub = if (!is.null(thr)) thr$ub[thr$metric == "ppv"] else NA_real_,
-    tpr = if (!is.null(thr)) thr$avg[thr$metric == "tpr"] else NA_real_,
-    tpr_lb = if (!is.null(thr)) thr$lb[thr$metric == "tpr"] else NA_real_,
-    tpr_ub = if (!is.null(thr)) thr$ub[thr$metric == "tpr"] else NA_real_,
-    npv = if (!is.null(thr)) thr$avg[thr$metric == "npv"] else NA_real_,
-    npv_lb = if (!is.null(thr)) thr$lb[thr$metric == "npv"] else NA_real_,
-    npv_ub = if (!is.null(thr)) thr$ub[thr$metric == "npv"] else NA_real_,
-    tnr = if (!is.null(thr)) thr$avg[thr$metric == "tnr"] else NA_real_,
-    tnr_lb = if (!is.null(thr)) thr$lb[thr$metric == "tnr"] else NA_real_,
-    tnr_ub = if (!is.null(thr)) thr$ub[thr$metric == "tnr"] else NA_real_,
-    nb_model = if (!is.null(thr)) thr$avg[thr$metric == "nb"] else NA_real_,
-    dec_f = sub("_discrimination\\.rds$", "_decision.rds", files),
-    dec = list(if (file.exists(dec_f)) readRDS(dec_f) else NULL),
-    nb_treat_all = {
-      if (!is.null(dec) && length(dec$plot$layers) >= 3) {
-        ta <- dec$plot$layers[[3]]$data
-        ta$intercept + ta$slope * threshold
-      } else NA_real_
+    auprc = {
+      roc <- disc$plot$data
+      p <- prevalence
+      precision <- (roc$tpr * p) / (roc$tpr * p + (1 - roc$tnr) * (1 - p))
+      recall <- roc$tpr
+      precision[is.nan(precision)] <- 1
+      ord <- order(recall, precision)
+      recall <- recall[ord]
+      precision <- precision[ord]
+      idx <- !duplicated(recall)
+      recall <- recall[idx]
+      precision <- precision[idx]
+      sum(diff(recall) * (precision[-1] + precision[-length(precision)]) / 2, na.rm = TRUE)
     }
   ) |>
   ungroup()
 ```
 
-```{r Ontology detail tables, echo=FALSE, results='asis'}
-fmt <- function(x, lb, ub) ifelse(is.nan(x) | is.na(x), "—", sprintf("%.1f (%.1f, %.1f)", x, lb, ub))
-fmt_nb <- function(x) ifelse(is.nan(x) | is.na(x), "—", sprintf("%.4f", x))
-
-for (m in unique(ont_detail$model_id)) {
-  sub <- ont_detail |> filter(model_id == m) |> arrange(desc(auroc))
-  label <- paste0(sub$pe_subtype[1], " — ", sub$associated_factor[1], " (Fig ", sub$figure_ref[1], ")")
-  cat(sprintf("\n### %s\n\n", label))
-  tbl <- sub |> transmute(
-    Ontology = original_id,
-    `AUC-ROC` = sprintf("%.3f (±%.3f)", auroc, auroc_ci),
-    Threshold = sprintf("%.2f", threshold),
-    `NB Model` = fmt_nb(nb_model), `NB Treat-All` = fmt_nb(nb_treat_all),
-    `PPV (%)` = fmt(ppv, ppv_lb, ppv_ub), `TPR (%)` = fmt(tpr, tpr_lb, tpr_ub),
-    `NPV (%)` = fmt(npv, npv_lb, npv_ub), `TNR (%)` = fmt(tnr, tnr_lb, tnr_ub)
-  )
-  print(tbl |> kable(caption = label, format = "html") |> kable_classic() |>
-    scroll_box(height = "400px") |> column_spec(1:9, extra_css = "vertical-align:top;"))
-  cat("\n\n")
-}
+```{r AUPRC table, echo=FALSE}
+auprc_data |>
+  transmute(
+    Model = model_id, Figure = figure_ref,
+    Prevalence = sprintf("%.3f", prevalence),
+    `AUC-PRC` = sprintf("%.3f", auprc)
+  ) |>
+  kable(caption = "Table 2. Root-level AUC-PRC (test set). Low prevalence results in low baseline AUPRC.", format = "html") |>
+  kable_classic() |> column_spec(1:4, extra_css = "vertical-align:top;")
 ```
 
-# ROC curves (root level)
-
-```{r ROC curves, echo=FALSE, fig.width=12, fig.height=8, warning=FALSE}
-roc_plots <- disc_data |>
-  rowwise() |>
-  mutate(plot = list({
-    df <- disc$plot$data
-    ggplot(df, aes(x = 1 - tnr, y = tpr)) +
-      geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
-      geom_path(color = "steelblue", linewidth = 1) +
-      labs(title = paste0("Fig ", figure_ref, ": ", model_id),
-           subtitle = sprintf("AUC = %.3f", auroc),
-           x = "1 - Specificity (FPR)", y = "Sensitivity (TPR)") +
-      coord_equal() + theme_minimal() + theme(plot.title = element_text(size = 10))
-  })) |> pull(plot)
-ggarrange(plotlist = roc_plots, ncol = 3, nrow = 3)
-```
-
-# Model calibration
+# 3. Calibration
 
 ```{r Load calibration, include=FALSE}
 cal_data <- models |>
@@ -221,12 +114,13 @@ cal_data <- models |>
 
 ```{r Calibration table, echo=FALSE}
 cal_data |>
-  transmute(Model = model_id, Figure = figure_ref,
+  transmute(
+    Model = model_id, Figure = figure_ref,
     Intercept = sprintf("%.3f", intercept),
     Slope = ifelse(is.na(slope), "—", sprintf("%.3f", slope)),
     RMSE = sprintf("%.3f (±%.4f)", rmse, rmse_ci)
   ) |>
-  kable(caption = "Table 4. Root-level calibration metrics.", format = "html") |>
+  kable(caption = "Table 3. Root-level calibration metrics (test set).", format = "html") |>
   kable_classic() |> column_spec(1:5, extra_css = "vertical-align:top;")
 ```
 
@@ -266,90 +160,25 @@ dist_plots <- cal_data |>
 ggarrange(plotlist = dist_plots, ncol = 3, nrow = 3)
 ```
 
-# Decision curves
+# 4. ROC curves
 
-## Development set (threshold selection)
-
-Thresholds were selected from the development set by maximizing the net benefit
-difference relative to the treat-all and treat-none references.
-
-```{r Load dev decision, include=FALSE}
-dec_dev <- models |>
-  rowwise() |>
-  mutate(
-    dec = list(readRDS(paste0("data/eval_train/", model_prefix, "_root_decision.rds"))),
-    ta_intercept = dec$plot$layers[[3]]$data$intercept,
-    ta_slope = dec$plot$layers[[3]]$data$slope
-  ) |>
-  ungroup()
-```
-
-```{r Dev decision curve plots, echo=FALSE, fig.width=12, fig.height=8, warning=FALSE}
-dec_dev_plots <- dec_dev |>
+```{r ROC curves, echo=FALSE, fig.width=12, fig.height=8, warning=FALSE}
+roc_plots <- disc_data |>
   rowwise() |>
   mutate(plot = list({
-    df <- dec$plot$data
-    ggplot(df, aes(x = th, y = nb)) +
-      geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
-      geom_abline(intercept = ta_intercept, slope = ta_slope,
-                  linetype = "dotted", color = "darkred", linewidth = 0.8) +
-      geom_line(color = "steelblue", linewidth = 1) +
-      annotate("text", x = 0.02, y = ta_intercept + 0.005, label = "Treat all",
-               color = "darkred", hjust = 0, size = 3) +
-      annotate("text", x = 0.98, y = 0.005, label = "Treat none",
-               color = "grey50", hjust = 1, size = 3) +
-      labs(title = paste0("Fig ", figure_ref, ": ", model_id, " (Dev set)"),
-           x = "Threshold probability", y = "Net benefit") +
-      xlim(0, 1) + theme_minimal() + theme(plot.title = element_text(size = 10))
+    df <- disc$plot$data
+    ggplot(df, aes(x = 1 - tnr, y = tpr)) +
+      geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
+      geom_path(color = "steelblue", linewidth = 1) +
+      labs(title = paste0("Fig ", figure_ref, ": ", model_id),
+           subtitle = sprintf("AUC = %.3f", auroc),
+           x = "1 - Specificity (FPR)", y = "Sensitivity (TPR)") +
+      coord_equal() + theme_minimal() + theme(plot.title = element_text(size = 10))
   })) |> pull(plot)
-ggarrange(plotlist = dec_dev_plots, ncol = 3, nrow = 3)
+ggarrange(plotlist = roc_plots, ncol = 3, nrow = 3)
 ```
 
-# Threshold analysis
-
-## Development set (threshold selection)
-
-```{r Load dev thresholding, include=FALSE}
-thr_dev <- models |>
-  rowwise() |>
-  mutate(thr = list(readRDS(paste0("data/eval_train/", model_prefix, "_root_thresholding.rds")))) |>
-  ungroup()
-```
-
-```{r Dev thresholds table, echo=FALSE}
-thr_dev_joined <- thr_dev |>
-  left_join(dec_dev |> select(model_id, ta_intercept, ta_slope), by = "model_id")
-
-thr_dev_joined |>
-  rowwise() |>
-  mutate(
-    threshold = thr$ref_value[1],
-    nb_model = thr$avg[thr$metric == "nb"],
-    nb_treat_all = ta_intercept + ta_slope * threshold,
-    nb_ref = max(nb_treat_all, 0),
-    nb_diff = nb_model - nb_ref,
-    ppv = thr$avg[thr$metric == "ppv"], ppv_lb = thr$lb[thr$metric == "ppv"], ppv_ub = thr$ub[thr$metric == "ppv"],
-    tpr = thr$avg[thr$metric == "tpr"], tpr_lb = thr$lb[thr$metric == "tpr"], tpr_ub = thr$ub[thr$metric == "tpr"],
-    npv = thr$avg[thr$metric == "npv"], npv_lb = thr$lb[thr$metric == "npv"], npv_ub = thr$ub[thr$metric == "npv"],
-    tnr = thr$avg[thr$metric == "tnr"], tnr_lb = thr$lb[thr$metric == "tnr"], tnr_ub = thr$ub[thr$metric == "tnr"]
-  ) |>
-  ungroup() |>
-  transmute(
-    Model = model_id, Figure = figure_ref,
-    Threshold = sprintf("%.2f", threshold),
-    `NB Model` = ifelse(is.nan(nb_model), "—", sprintf("%.4f", nb_model)),
-    `NB Ref` = sprintf("%.4f", nb_ref),
-    `NB Diff` = ifelse(is.nan(nb_diff), "—", sprintf("%.4f", nb_diff)),
-    PPV = ifelse(is.nan(ppv), "—", sprintf("%.1f%% (%.1f, %.1f)", ppv, ppv_lb, ppv_ub)),
-    TPR = ifelse(is.nan(tpr), "—", sprintf("%.1f%% (%.1f, %.1f)", tpr, tpr_lb, tpr_ub)),
-    NPV = ifelse(is.nan(npv), "—", sprintf("%.1f%% (%.1f, %.1f)", npv, npv_lb, npv_ub)),
-    TNR = ifelse(is.nan(tnr), "—", sprintf("%.1f%% (%.1f, %.1f)", tnr, tnr_lb, tnr_ub))
-  ) |>
-  kable(caption = "Table 5. Development set: thresholds, net benefits (model vs. best reference), and performance metrics (95% CIs).", format = "html") |>
-  kable_classic() |> column_spec(1:10, extra_css = "vertical-align:top;")
-```
-
-## Test set (validation)
+# 5. Confusion matrices
 
 ```{r Load test thresholding, include=FALSE}
 thr_test <- models |>
@@ -358,7 +187,7 @@ thr_test <- models |>
   ungroup()
 ```
 
-```{r Test thresholds table, echo=FALSE}
+```{r Confusion matrix table, echo=FALSE}
 thr_test |>
   rowwise() |>
   mutate(
@@ -371,12 +200,127 @@ thr_test |>
   ungroup() |>
   transmute(
     Model = model_id, Figure = figure_ref,
+    Criteria = validation_criteria,
     Threshold = sprintf("%.2f", threshold),
     PPV = ifelse(is.nan(ppv), "—", sprintf("%.1f%% (%.1f, %.1f)", ppv, ppv_lb, ppv_ub)),
     TPR = ifelse(is.nan(tpr), "—", sprintf("%.1f%% (%.1f, %.1f)", tpr, tpr_lb, tpr_ub)),
     NPV = ifelse(is.nan(npv), "—", sprintf("%.1f%% (%.1f, %.1f)", npv, npv_lb, npv_ub)),
     TNR = ifelse(is.nan(tnr), "—", sprintf("%.1f%% (%.1f, %.1f)", tnr, tnr_lb, tnr_ub))
   ) |>
-  kable(caption = "Table 6. Test set: thresholds and performance metrics (95% CIs).", format = "html") |>
-  kable_classic() |> column_spec(1:7, extra_css = "vertical-align:top;")
+  kable(caption = "Table 4. Confusion matrix metrics at selected thresholds (test set, 95% CIs).", format = "html") |>
+  kable_classic() |> column_spec(1:8, extra_css = "vertical-align:top;")
+```
+
+# 6. Training-validation convergence
+
+```{r Load convergence data, include=FALSE}
+conv_data <- models |>
+  rowwise() |>
+  mutate(
+    hist_file = paste0("data/history/", model_prefix, "_history.csv"),
+    history = list(if (file.exists(hist_file)) read_csv(hist_file, show_col_types = FALSE) else NULL)
+  ) |>
+  ungroup()
+```
+
+```{r Convergence plots, echo=FALSE, fig.width=12, fig.height=8, warning=FALSE}
+conv_plots <- conv_data |>
+  filter(!map_lgl(history, is.null)) |>
+  rowwise() |>
+  mutate(plot = list({
+    df <- history |> select(epoch, subset, total_loss)
+    ggplot(df, aes(x = epoch, y = total_loss, color = subset)) +
+      geom_line(linewidth = 0.8) +
+      labs(title = paste0("Fig ", figure_ref, ": ", model_id),
+           x = "Epoch", y = "Total loss", color = "Set") +
+      scale_color_manual(values = c("training" = "steelblue", "validation" = "darkred")) +
+      theme_minimal() + theme(plot.title = element_text(size = 10), legend.position = "bottom")
+  })) |> pull(plot)
+ggarrange(plotlist = conv_plots, ncol = 3, nrow = 3, common.legend = TRUE, legend = "bottom")
+```
+
+```{r Convergence AUC plots, echo=FALSE, fig.width=12, fig.height=8, warning=FALSE}
+conv_auc_plots <- conv_data |>
+  filter(!map_lgl(history, is.null)) |>
+  rowwise() |>
+  mutate(plot = list({
+    df <- history |> select(epoch, subset, roc_auc)
+    ggplot(df, aes(x = epoch, y = roc_auc, color = subset)) +
+      geom_line(linewidth = 0.8) +
+      labs(title = paste0("Fig ", figure_ref, ": ", model_id),
+           x = "Epoch", y = "AUC-ROC", color = "Set") +
+      scale_color_manual(values = c("training" = "steelblue", "validation" = "darkred")) +
+      ylim(0, 1) +
+      theme_minimal() + theme(plot.title = element_text(size = 10), legend.position = "bottom")
+  })) |> pull(plot)
+ggarrange(plotlist = conv_auc_plots, ncol = 3, nrow = 3, common.legend = TRUE, legend = "bottom")
+```
+
+# 7. Threshold values
+
+```{r Load dev thresholding, include=FALSE}
+thr_dev <- models |>
+  rowwise() |>
+  mutate(thr = list(readRDS(paste0("data/eval_train/", model_prefix, "_root_thresholding.rds")))) |>
+  ungroup()
+
+dec_dev <- models |>
+  rowwise() |>
+  mutate(
+    dec = list(readRDS(paste0("data/eval_train/", model_prefix, "_root_decision.rds"))),
+    ta_intercept = dec$plot$layers[[3]]$data$intercept,
+    ta_slope = dec$plot$layers[[3]]$data$slope
+  ) |>
+  ungroup()
+```
+
+Thresholds were selected from the development set by maximizing the net benefit
+difference relative to the treat-all and treat-none references.
+
+```{r Threshold values table, echo=FALSE}
+thr_dev |>
+  left_join(dec_dev |> select(model_id, ta_intercept, ta_slope), by = "model_id") |>
+  rowwise() |>
+  mutate(
+    threshold = thr$ref_value[1],
+    nb_model = thr$avg[thr$metric == "nb"],
+    nb_treat_all = ta_intercept + ta_slope * threshold,
+    nb_ref = max(nb_treat_all, 0),
+    nb_diff = nb_model - nb_ref
+  ) |>
+  ungroup() |>
+  transmute(
+    Model = model_id, Figure = figure_ref,
+    Threshold = sprintf("%.2f", threshold),
+    `NB Model` = ifelse(is.nan(nb_model), "—", sprintf("%.4f", nb_model)),
+    `NB Ref (max of treat-all, 0)` = sprintf("%.4f", nb_ref),
+    `NB Diff` = ifelse(is.nan(nb_diff), "—", sprintf("%.4f", nb_diff))
+  ) |>
+  kable(caption = "Table 5. Threshold selection from development set: net benefit vs. best reference.", format = "html") |>
+  kable_classic() |> column_spec(1:6, extra_css = "vertical-align:top;")
+```
+
+# 8. Decision curves
+
+Decision curves from the development set, where thresholds were selected.
+
+```{r Decision curve plots, echo=FALSE, fig.width=12, fig.height=8, warning=FALSE}
+dec_plots <- dec_dev |>
+  rowwise() |>
+  mutate(plot = list({
+    df <- dec$plot$data
+    ggplot(df, aes(x = th, y = nb)) +
+      geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
+      geom_abline(intercept = ta_intercept, slope = ta_slope,
+                  linetype = "dotted", color = "darkred", linewidth = 0.8) +
+      geom_line(color = "steelblue", linewidth = 1) +
+      annotate("text", x = 0.02, y = ta_intercept + 0.005, label = "Treat all",
+               color = "darkred", hjust = 0, size = 3) +
+      annotate("text", x = 0.98, y = 0.005, label = "Treat none",
+               color = "grey50", hjust = 1, size = 3) +
+      labs(title = paste0("Fig ", figure_ref, ": ", model_id),
+           x = "Threshold probability", y = "Net benefit") +
+      xlim(0, 1) + theme_minimal() + theme(plot.title = element_text(size = 10))
+  })) |> pull(plot)
+ggarrange(plotlist = dec_plots, ncol = 3, nrow = 3)
 ```
