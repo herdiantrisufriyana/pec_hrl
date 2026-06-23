@@ -32,38 +32,16 @@ models <- read_csv("inst/extdata/model_registry.csv", show_col_types = FALSE)
 sessionInfo()
 ```
 
-# 1. AUROC
+# 1. AUROC, AUPRC, and calibration
 
-```{r Load discrimination, include=FALSE}
-disc_data <- models |>
-  rowwise() |>
-  mutate(
-    disc = list(readRDS(paste0("data/eval/", model_prefix, "_root_discrimination.rds"))),
-    auroc = disc$metrics$estimate,
-    auroc_ci = disc$metrics$ci
-  ) |>
-  ungroup()
-```
-
-```{r AUROC table, echo=FALSE}
-disc_data |>
-  transmute(
-    Model = model_id, Figure = figure_ref, Subtype = pe_subtype,
-    `Associated Factor` = associated_factor,
-    `AUC-ROC` = sprintf("%.3f (%.3f, %.3f)", auroc, auroc - auroc_ci, auroc + auroc_ci)
-  ) |>
-  kable(caption = "Table 1. Root-level AUC-ROC (test set).", format = "html") |>
-  kable_classic() |> column_spec(1:5, extra_css = "vertical-align:top;")
-```
-
-# 2. AUPRC
-
-```{r Compute AUPRC, include=FALSE}
-auprc_data <- models |>
+```{r Load discrimination and calibration, include=FALSE}
+disc_cal_data <- models |>
   rowwise() |>
   mutate(
     disc = list(readRDS(paste0("data/eval/", model_prefix, "_root_discrimination.rds"))),
     cal = list(readRDS(paste0("data/eval/", model_prefix, "_root_calibration.rds"))),
+    auroc = disc$metrics$estimate,
+    auroc_ci = disc$metrics$ci,
     prevalence = {
       d <- cal$dist$data
       d$n[d$obs == "1"] / sum(d$n)
@@ -81,53 +59,30 @@ auprc_data <- models |>
       recall <- recall[idx]
       precision <- precision[idx]
       sum(diff(recall) * (precision[-1] + precision[-length(precision)]) / 2, na.rm = TRUE)
-    }
-  ) |>
-  ungroup()
-```
-
-```{r AUPRC table, echo=FALSE}
-auprc_data |>
-  transmute(
-    Model = model_id, Figure = figure_ref,
-    Prevalence = sprintf("%.3f", prevalence),
-    `AUC-PRC` = sprintf("%.3f", auprc)
-  ) |>
-  kable(caption = "Table 2. Root-level AUC-PRC (test set). Low prevalence results in low baseline AUPRC.", format = "html") |>
-  kable_classic() |> column_spec(1:4, extra_css = "vertical-align:top;")
-```
-
-# 3. Calibration
-
-```{r Load calibration, include=FALSE}
-cal_data <- models |>
-  rowwise() |>
-  mutate(
-    cal = list(readRDS(paste0("data/eval/", model_prefix, "_root_calibration.rds"))),
-    intercept = cal$metrics$estimate[1],
-    slope = cal$metrics$estimate[2],
+    },
     rmse = cal$metrics$estimate[3],
     rmse_ci = cal$metrics$ci[3]
   ) |>
   ungroup()
 ```
 
-```{r Calibration table, echo=FALSE}
-cal_data |>
+```{r Combined metrics table, echo=FALSE}
+disc_cal_data |>
   transmute(
-    Model = model_id, Figure = figure_ref,
-    Intercept = sprintf("%.3f", intercept),
-    Slope = ifelse(is.na(slope), "—", sprintf("%.3f", slope)),
+    Model = model_id, Figure = figure_ref, Subtype = pe_subtype,
+    `Associated Factor` = associated_factor,
+    `AUC-ROC` = sprintf("%.3f (%.3f, %.3f)", auroc, auroc - auroc_ci, auroc + auroc_ci),
+    `AUC-PRC` = sprintf("%.3f", auprc),
     RMSE = sprintf("%.3f (±%.4f)", rmse, rmse_ci)
   ) |>
-  kable(caption = "Table 3. Root-level calibration metrics (test set).", format = "html") |>
-  kable_classic() |> column_spec(1:5, extra_css = "vertical-align:top;")
+  kable(caption = "Table 1. Root-level discrimination (AUC-ROC, AUC-PRC) and calibration (RMSE) on the test set.", format = "html") |>
+  kable_classic() |> column_spec(1:7, extra_css = "vertical-align:top;")
 ```
 
 ## Calibration plots
 
 ```{r Calibration plots, echo=FALSE, fig.width=12, fig.height=8, warning=FALSE}
-cal_plots <- cal_data |>
+cal_plots <- disc_cal_data |>
   rowwise() |>
   mutate(plot = list({
     df <- cal$plot$data
@@ -147,7 +102,7 @@ ggarrange(plotlist = cal_plots, ncol = 3, nrow = 3)
 ## Prediction distributions
 
 ```{r Distribution plots, echo=FALSE, fig.width=12, fig.height=8, warning=FALSE}
-dist_plots <- cal_data |>
+dist_plots <- disc_cal_data |>
   rowwise() |>
   mutate(plot = list({
     df <- cal$dist$data
@@ -160,10 +115,10 @@ dist_plots <- cal_data |>
 ggarrange(plotlist = dist_plots, ncol = 3, nrow = 3)
 ```
 
-# 4. ROC curves
+# 2. ROC curves
 
 ```{r ROC curves, echo=FALSE, fig.width=12, fig.height=8, warning=FALSE}
-roc_plots <- disc_data |>
+roc_plots <- disc_cal_data |>
   rowwise() |>
   mutate(plot = list({
     df <- disc$plot$data
@@ -178,7 +133,7 @@ roc_plots <- disc_data |>
 ggarrange(plotlist = roc_plots, ncol = 3, nrow = 3)
 ```
 
-# 5. Confusion matrices
+# 3. Confusion matrices
 
 ```{r Load test thresholding, include=FALSE}
 thr_test <- models |>
@@ -207,11 +162,11 @@ thr_test |>
     NPV = ifelse(is.nan(npv), "—", sprintf("%.1f%% (%.1f, %.1f)", npv, npv_lb, npv_ub)),
     TNR = ifelse(is.nan(tnr), "—", sprintf("%.1f%% (%.1f, %.1f)", tnr, tnr_lb, tnr_ub))
   ) |>
-  kable(caption = "Table 4. Confusion matrix metrics at selected thresholds (test set, 95% CIs).", format = "html") |>
+  kable(caption = "Table 2. Confusion matrix metrics at selected thresholds (test set, 95% CIs).", format = "html") |>
   kable_classic() |> column_spec(1:8, extra_css = "vertical-align:top;")
 ```
 
-# 6. Training-validation convergence
+# 4. Training-validation convergence
 
 ```{r Load convergence data, include=FALSE}
 conv_data <- models |>
@@ -256,7 +211,7 @@ conv_auc_plots <- conv_data |>
 ggarrange(plotlist = conv_auc_plots, ncol = 3, nrow = 3, common.legend = TRUE, legend = "bottom")
 ```
 
-# 7. Threshold values
+# 5. Threshold values
 
 ```{r Load dev thresholding, include=FALSE}
 thr_dev <- models |>
@@ -296,11 +251,11 @@ thr_dev |>
     `NB Ref (max of treat-all, 0)` = sprintf("%.4f", nb_ref),
     `NB Diff` = ifelse(is.nan(nb_diff), "—", sprintf("%.4f", nb_diff))
   ) |>
-  kable(caption = "Table 5. Threshold selection from development set: net benefit vs. best reference.", format = "html") |>
+  kable(caption = "Table 3. Threshold selection from development set: net benefit vs. best reference.", format = "html") |>
   kable_classic() |> column_spec(1:6, extra_css = "vertical-align:top;")
 ```
 
-# 8. Decision curves
+# 6. Decision curves
 
 Decision curves from the development set, where thresholds were selected.
 
