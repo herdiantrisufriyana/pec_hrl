@@ -1,21 +1,18 @@
-# PROJECT_TITLE
+# Modeling distinct pathogenesis of early- and late-onset preeclampsia via hierarchical representation learning of interactome
 
 A fully reproducible data analysis report.
-
-Please replace this, accordingly:
-PROJECT_TITLE
-YOUR_GITHUB_USERNAME
-YOUR_PROJECT_NAME
 
 
 ---
 
 ## Investigators
 
-- Name 1, Degree  
-  Affiliation  
-- Name 2, Degree  
-  Affiliation  
+- Herdiantri Sufriyana, MD, PhD  
+  Institute of Biomedical Informatics, College of Medicine, National Yang Ming Chiao Tung University, Taipei, Taiwan  
+- Yu-Wei Wu, PhD  
+  Graduate Institute of Biomedical Informatics, College of Medical Science and Technology, Taipei Medical University, Taipei, Taiwan  
+- Emily Chia-Yu Su, PhD  
+  Institute of Biomedical Informatics, College of Medicine, National Yang Ming Chiao Tung University, Taipei, Taiwan  
 
 ---
 
@@ -23,11 +20,11 @@ YOUR_PROJECT_NAME
 
 GitHub Repository:
 
-https://github.com/YOUR_GITHUB_USERNAME/YOUR_PROJECT_NAME
+https://github.com/herdiantrisufriyana/pec_hrl
 
 GitHub Pages Report:
 
-https://YOUR_GITHUB_USERNAME.github.io/YOUR_PROJECT_NAME/
+https://herdiantrisufriyana.github.io/pec_hrl/
 
 ---
 

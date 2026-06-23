@@ -1,11 +1,19 @@
 ---
-title: "Project title"
+title: "Modeling distinct pathogenesis of early- and late-onset preeclampsia via hierarchical representation learning of interactome"
 author:
-  - name: Author Name
+  - name: Herdiantri Sufriyana
     affiliation:
-    - &aff1 Author Institution, City, Country.
-    email: email@website.com
-date: "2025-04-07"
+    - &aff1 Institute of Biomedical Informatics, College of Medicine, National Yang Ming Chiao Tung University, Taipei, Taiwan.
+    email: herdi@nycu.edu.tw
+  - name: Yu-Wei Wu
+    affiliation:
+    - &aff2 Graduate Institute of Biomedical Informatics, College of Medical Science and Technology, Taipei Medical University, Taipei, Taiwan.
+  - name: Emily Chia-Yu Su
+    affiliation:
+    - *aff1
+    - *aff2
+    email: emilysu@nycu.edu.tw
+date: "2023-07-28"
 output: 
   html_document:
     toc: true
@@ -14,7 +22,7 @@ output:
       collapsed: false
       smooth_scroll: true
 vignette: >
-  %\VignetteIndexEntry{Project title}
+  %\VignetteIndexEntry{Modeling distinct pathogenesis of early- and late-onset preeclampsia via hierarchical representation learning of interactome}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
