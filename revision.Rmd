@@ -442,12 +442,26 @@ for (i in 1:nrow(disc_cal_data)) {
     select(node) |>
     left_join(test |> select(node, auroc, auroc_ci, auprc, rmse, rmse_ci), by = "node", suffix = c("", "_test"))
 
-  # Use tree display names
+  # Use tree display names with ontotype genes and daggers (same as threshold table)
   ontology_labels <- dev$original_id
-  if (!is.null(tree_order)) {
-    for (k in seq_along(ontology_labels)) {
+  ont_genes_list <- ontotype_genes[[m$model_prefix]]
+  for (k in seq_along(ontology_labels)) {
+    if (!is.null(tree_order)) {
       idx <- match(dev$node[k], tree_order$eval_node)
-      if (!is.na(idx)) ontology_labels[k] <- tree_order$display[idx]
+      if (!is.na(idx)) {
+        node_genes <- if (!is.null(ont_genes_list)) ont_genes_list[[dev$node[k]]] else character(0)
+        if (is.null(node_genes) || length(node_genes) == 0) node_genes <- tree_order$genes[[idx]]
+        eligible_genes <- if (!is.null(gc_eligible)) gc_eligible[[dev$node[k]]] else character(0)
+        if (length(node_genes) > 0) {
+          marked_genes <- sapply(node_genes, \(g) if (g %in% eligible_genes) paste0(g, "\U2020") else g)
+          gene_str <- paste0(" (", paste(marked_genes, collapse = ", "), ")")
+        } else {
+          gene_str <- ""
+        }
+        raw_display <- tree_order$display[idx]
+        raw_no_genes <- sub(" \\(.*\\)$", "", raw_display)
+        ontology_labels[k] <- paste0(raw_no_genes, gene_str)
+      }
     }
   }
 
