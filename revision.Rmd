@@ -94,7 +94,52 @@ disc_cal_data <- models |>
   ungroup()
 ```
 
-```{r Per-model tables, echo=FALSE, results='asis'}
+```{r Helper functions for threshold tables, include=FALSE}
+fmt_cm <- function(x, lb, ub) ifelse(is.nan(x) | is.na(x), "—", sprintf("%.1f%% (%.1f, %.1f)", x, lb, ub))
+
+fmt_pair <- function(a_avg, a_lb, a_ub, b_avg, b_lb, b_ub) {
+  paste0(fmt_cm(a_avg, a_lb, a_ub), " / ", fmt_cm(b_avg, b_lb, b_ub))
+}
+
+get_metric <- function(thr_rds, m) {
+  list(avg = thr_rds$avg[thr_rds$metric == m],
+       lb = thr_rds$lb[thr_rds$metric == m],
+       ub = thr_rds$ub[thr_rds$metric == m])
+}
+
+extract_thr_for_model <- function(prefix, eval_dir, ont_name_file = NULL) {
+  all_thr <- list.files(eval_dir, pattern = paste0("^", prefix, "_(root|ONT[0-9]+)_thresholding\\.rds$"), full.names = TRUE)
+
+  lapply(all_thr, function(f) {
+    node <- str_extract(basename(f), "root|ONT[0-9]+")
+    thr <- readRDS(f)
+    dec_f <- sub("_thresholding\\.rds$", "_decision.rds", f)
+    dec <- if (file.exists(dec_f)) readRDS(dec_f) else NULL
+
+    original_id <- node
+    if (!is.null(ont_name_file) && file.exists(ont_name_file) && node != "root") {
+      ont_names <- read.csv(ont_name_file)
+      ont_colon <- str_replace(node, "ONT", "ONT:")
+      m <- ont_names[ont_names$new_oid == ont_colon, ]
+      if (nrow(m) > 0) original_id <- m$old_oid[1]
+    }
+
+    threshold <- thr$ref_value[1]
+    nb_model <- thr$avg[thr$metric == "nb"]
+    nb_ref <- NA
+    if (!is.null(dec) && length(dec$plot$layers) >= 3) {
+      ta <- dec$plot$layers[[3]]$data
+      nb_treat_all <- ta$intercept + ta$slope * threshold
+      nb_ref <- max(nb_treat_all, 0)
+    }
+
+    list(node = node, original_id = original_id, thr = thr,
+         threshold = threshold, nb_model = nb_model, nb_ref = nb_ref)
+  })
+}
+```
+
+```{r Per-model combined tables, echo=FALSE, results='asis'}
 fmt_auroc <- function(a, ci) sprintf("%.3f (%.3f, %.3f)", a, a - ci, a + ci)
 fmt_val <- function(x) ifelse(is.na(x), "—", sprintf("%.3f", x))
 fmt_rmse <- function(r, ci) ifelse(is.na(r), "—", sprintf("%.3f (±%.4f)", r, ci))
@@ -103,11 +148,58 @@ for (i in 1:nrow(disc_cal_data)) {
   m <- disc_cal_data[i, ]
   section_title <- paste0(m$pe_subtype, " — ", m$associated_factor,
                            " (Fig ", m$figure_ref, ", ", m$ontology_type, ")")
-  table_caption <- paste0("Table ", i, ". AUROC, AUPRC, and calibration.")
 
+  cat(sprintf("\n# %s\n\n", section_title))
+
+  # --- Table A: Threshold values and confusion matrices ---
+  ont_name_file <- paste0("data/ontology/", m$model_prefix, ".csv")
+  dev_nodes_raw <- extract_thr_for_model(m$model_prefix, "data/eval_train/", ont_name_file)
+  dev_nodes <- dev_nodes_raw[order(sapply(dev_nodes_raw, \(x) x$node != "root"), sapply(dev_nodes_raw, \(x) x$node))]
+  test_nodes <- extract_thr_for_model(m$model_prefix, "data/eval/", ont_name_file)
+  test_by_node <- setNames(test_nodes, sapply(test_nodes, \(x) x$node))
+
+  rows <- list()
+  for (dn in dev_nodes) {
+    tn <- test_by_node[[dn$node]]
+    pairs <- list(
+      list(label = "PPV/TPR", m1 = "ppv", m2 = "tpr"),
+      list(label = "NPV/TNR", m1 = "npv", m2 = "tnr")
+    )
+    for (j in seq_along(pairs)) {
+      p <- pairs[[j]]
+      d1 <- get_metric(dn$thr, p$m1); d2 <- get_metric(dn$thr, p$m2)
+      t1 <- if (!is.null(tn)) get_metric(tn$thr, p$m1) else list(avg=NA, lb=NA, ub=NA)
+      t2 <- if (!is.null(tn)) get_metric(tn$thr, p$m2) else list(avg=NA, lb=NA, ub=NA)
+      valid_dev <- is.finite(d1$lb) && d1$lb > 0 && is.finite(d2$lb) && d2$lb > 0
+      valid_test <- is.finite(t1$lb) && t1$lb > 0 && is.finite(t2$lb) && t2$lb > 0
+      valid <- if (valid_dev && valid_test) "Yes" else "No"
+      rows[[length(rows) + 1]] <- data.frame(
+        Ontology = if (j == 1) dn$original_id else "",
+        Threshold = if (j == 1) sprintf("%.2f", dn$threshold) else "",
+        `NB Model` = if (j == 1) ifelse(is.nan(dn$nb_model), "—", sprintf("%.4f", dn$nb_model)) else "",
+        `NB Ref` = if (j == 1) ifelse(is.na(dn$nb_ref), "—", sprintf("%.4f", dn$nb_ref)) else "",
+        Metrics = p$label,
+        Dev = fmt_pair(d1$avg, d1$lb, d1$ub, d2$avg, d2$lb, d2$ub),
+        Test = fmt_pair(t1$avg, t1$lb, t1$ub, t2$avg, t2$lb, t2$ub),
+        Valid = valid,
+        check.names = FALSE
+      )
+    }
+  }
+
+  print(
+    do.call(rbind, rows) |>
+      kable(caption = paste0("Table ", 2*i - 1, ". Threshold values and confusion matrices."), format = "html") |>
+      kable_classic(full_width = TRUE) |>
+      kable_styling(font_size = 12) |>
+      scroll_box(height = "400px", width = "100%")
+  )
+
+  cat("\n\n")
+
+  # --- Table B: AUROC, AUPRC, and calibration ---
   dev <- m$metrics_dev[[1]] |> arrange(node != "root", node)
   test <- m$metrics_test[[1]] |> arrange(node != "root", node)
-
   test_matched <- dev |>
     select(node) |>
     left_join(test |> select(node, auroc, auroc_ci, auprc, rmse, rmse_ci), by = "node", suffix = c("", "_test"))
@@ -125,11 +217,9 @@ for (i in 1:nrow(disc_cal_data)) {
       )
     )
 
-  cat(sprintf("\n# %s\n\n", section_title))
-
   print(
     combined |>
-      kable(caption = table_caption, format = "html") |>
+      kable(caption = paste0("Table ", 2*i, ". AUROC, AUPRC, and calibration."), format = "html") |>
       kable_classic(full_width = TRUE) |>
       kable_styling(font_size = 12) |>
       scroll_box(height = "400px", width = "100%")
@@ -204,119 +294,6 @@ conv_auc_plots <- conv_data |>
       theme_minimal() + theme(plot.title = element_text(size = 10), legend.position = "bottom")
   })) |> pull(plot)
 ggarrange(plotlist = conv_auc_plots, ncol = 3, nrow = 3, common.legend = TRUE, legend = "bottom")
-```
-
-```{r Helper functions for threshold tables, include=FALSE}
-fmt_cm <- function(x, lb, ub) ifelse(is.nan(x) | is.na(x), "—", sprintf("%.1f%% (%.1f, %.1f)", x, lb, ub))
-
-fmt_pair <- function(a_avg, a_lb, a_ub, b_avg, b_lb, b_ub) {
-  paste0(fmt_cm(a_avg, a_lb, a_ub), " / ", fmt_cm(b_avg, b_lb, b_ub))
-}
-
-get_metric <- function(thr_rds, m) {
-  list(avg = thr_rds$avg[thr_rds$metric == m],
-       lb = thr_rds$lb[thr_rds$metric == m],
-       ub = thr_rds$ub[thr_rds$metric == m])
-}
-
-extract_thr_for_model <- function(prefix, eval_dir, ont_name_file = NULL) {
-  all_thr <- list.files(eval_dir, pattern = paste0("^", prefix, "_(root|ONT[0-9]+)_thresholding\\.rds$"), full.names = TRUE)
-  all_dec <- list.files(eval_dir, pattern = paste0("^", prefix, "_(root|ONT[0-9]+)_decision\\.rds$"), full.names = TRUE)
-
-  lapply(all_thr, function(f) {
-    node <- str_extract(basename(f), "root|ONT[0-9]+")
-    thr <- readRDS(f)
-    dec_f <- sub("_thresholding\\.rds$", "_decision.rds", f)
-    dec <- if (file.exists(dec_f)) readRDS(dec_f) else NULL
-
-    original_id <- node
-    if (!is.null(ont_name_file) && file.exists(ont_name_file) && node != "root") {
-      ont_names <- read.csv(ont_name_file)
-      ont_colon <- str_replace(node, "ONT", "ONT:")
-      m <- ont_names[ont_names$new_oid == ont_colon, ]
-      if (nrow(m) > 0) original_id <- m$old_oid[1]
-    }
-
-    threshold <- thr$ref_value[1]
-    nb_model <- thr$avg[thr$metric == "nb"]
-    nb_ref <- NA
-    if (!is.null(dec) && length(dec$plot$layers) >= 3) {
-      ta <- dec$plot$layers[[3]]$data
-      nb_treat_all <- ta$intercept + ta$slope * threshold
-      nb_ref <- max(nb_treat_all, 0)
-    }
-
-    list(node = node, original_id = original_id, thr = thr,
-         threshold = threshold, nb_model = nb_model, nb_ref = nb_ref)
-  })
-}
-```
-
-```{r Per-model threshold tables, echo=FALSE, results='asis'}
-for (i in 1:nrow(models)) {
-  m <- models[i, ]
-  ont_name_file <- paste0("data/ontology/", m$model_prefix, ".csv")
-
-  dev_nodes_raw <- extract_thr_for_model(m$model_prefix, "data/eval_train/", ont_name_file)
-  # Sort: root first, then by node name
-  dev_nodes <- dev_nodes_raw[order(sapply(dev_nodes_raw, \(x) x$node != "root"), sapply(dev_nodes_raw, \(x) x$node))]
-  test_nodes <- extract_thr_for_model(m$model_prefix, "data/eval/", ont_name_file)
-
-  # Index test by node name for matching
-  test_by_node <- setNames(test_nodes, sapply(test_nodes, \(x) x$node))
-
-  rows <- list()
-  for (dn in dev_nodes) {
-    tn <- test_by_node[[dn$node]]
-
-    pairs <- list(
-      list(label = "PPV/TPR", m1 = "ppv", m2 = "tpr"),
-      list(label = "NPV/TNR", m1 = "npv", m2 = "tnr")
-    )
-
-    for (j in seq_along(pairs)) {
-      p <- pairs[[j]]
-      d1 <- get_metric(dn$thr, p$m1); d2 <- get_metric(dn$thr, p$m2)
-      t1 <- if (!is.null(tn)) get_metric(tn$thr, p$m1) else list(avg=NA, lb=NA, ub=NA)
-      t2 <- if (!is.null(tn)) get_metric(tn$thr, p$m2) else list(avg=NA, lb=NA, ub=NA)
-
-      valid_dev <- is.finite(d1$lb) && d1$lb > 0 && is.finite(d2$lb) && d2$lb > 0
-      valid_test <- is.finite(t1$lb) && t1$lb > 0 && is.finite(t2$lb) && t2$lb > 0
-      valid <- if (valid_dev && valid_test) "Yes" else "No"
-
-      rows[[length(rows) + 1]] <- data.frame(
-        Ontology = if (j == 1) dn$original_id else "",
-        Threshold = if (j == 1) sprintf("%.2f", dn$threshold) else "",
-        `NB Model` = if (j == 1) ifelse(is.nan(dn$nb_model), "—", sprintf("%.4f", dn$nb_model)) else "",
-        `NB Ref` = if (j == 1) ifelse(is.na(dn$nb_ref), "—", sprintf("%.4f", dn$nb_ref)) else "",
-        Metrics = p$label,
-        Dev = fmt_pair(d1$avg, d1$lb, d1$ub, d2$avg, d2$lb, d2$ub),
-        Test = fmt_pair(t1$avg, t1$lb, t1$ub, t2$avg, t2$lb, t2$ub),
-        Valid = valid,
-        check.names = FALSE
-      )
-    }
-  }
-
-  section_title <- paste0(m$model_id, " (Fig ", m$figure_ref, ")")
-  table_caption <- paste0("Table ", 7 + i, ". Threshold values and confusion matrices — ", section_title, ".")
-
-  cat(sprintf("\n# %s\n\n", section_title))
-
-  tbl <- do.call(rbind, rows)
-
-  # No resorting needed — rows are already in order (root first from dev_nodes iteration)
-
-  print(
-    tbl |>
-      kable(caption = table_caption, format = "html") |>
-      kable_classic(full_width = TRUE) |>
-      kable_styling(font_size = 12) |>
-      scroll_box(height = "400px", width = "100%")
-  )
-
-  cat("\n\n")
-}
 ```
 
 # Decision curves
