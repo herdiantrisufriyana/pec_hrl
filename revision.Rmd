@@ -79,42 +79,6 @@ disc_cal_data |>
   kable_classic() |> column_spec(1:7, extra_css = "vertical-align:top;")
 ```
 
-## Calibration plots
-
-```{r Calibration plots, echo=FALSE, fig.width=12, fig.height=8, warning=FALSE}
-cal_plots <- disc_cal_data |>
-  rowwise() |>
-  mutate(plot = list({
-    df <- cal$plot$data
-    ggplot(df, aes(x = pred, y = true)) +
-      geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
-      geom_point(size = 3, color = "steelblue") +
-      geom_errorbar(aes(ymin = lb, ymax = ub), width = 0.02, color = "steelblue") +
-      labs(title = paste0("Fig ", figure_ref, ": ", model_id),
-           subtitle = sprintf("RMSE = %.3f", rmse),
-           x = "Predicted probability", y = "Observed frequency") +
-      xlim(0, 1) + ylim(0, 1) + coord_equal() + theme_minimal() +
-      theme(plot.title = element_text(size = 10))
-  })) |> pull(plot)
-ggarrange(plotlist = cal_plots, ncol = 3, nrow = 3)
-```
-
-## Prediction distributions
-
-```{r Distribution plots, echo=FALSE, fig.width=12, fig.height=8, warning=FALSE}
-dist_plots <- disc_cal_data |>
-  rowwise() |>
-  mutate(plot = list({
-    df <- cal$dist$data
-    ggplot(df, aes(x = pred, y = n, fill = obs)) +
-      geom_col(position = "dodge", width = 0.05) +
-      labs(title = paste0("Fig ", figure_ref, ": ", model_id),
-           x = "Predicted probability", y = "Count", fill = "Outcome") +
-      xlim(0, 1) + theme_minimal() + theme(plot.title = element_text(size = 10))
-  })) |> pull(plot)
-ggarrange(plotlist = dist_plots, ncol = 3, nrow = 3)
-```
-
 # 2. ROC curves
 
 ```{r ROC curves, echo=FALSE, fig.width=12, fig.height=8, warning=FALSE}
