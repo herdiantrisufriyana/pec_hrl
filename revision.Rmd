@@ -236,16 +236,14 @@ dec_dev <- models |>
 ```{r Combined threshold and confusion matrix table, echo=FALSE}
 fmt_cm <- function(x, lb, ub) ifelse(is.nan(x) | is.na(x), "—", sprintf("%.1f%% (%.1f, %.1f)", x, lb, ub))
 
-extract_cm <- function(thr_rds) {
-  metrics <- c("ppv", "tpr", "npv", "tnr")
-  lapply(metrics, function(m) {
-    data.frame(
-      metric = toupper(m),
-      avg = thr_rds$avg[thr_rds$metric == m],
-      lb = thr_rds$lb[thr_rds$metric == m],
-      ub = thr_rds$ub[thr_rds$metric == m]
-    )
-  }) |> do.call(rbind, args = _)
+fmt_pair <- function(a_avg, a_lb, a_ub, b_avg, b_lb, b_ub) {
+  paste0(fmt_cm(a_avg, a_lb, a_ub), " / ", fmt_cm(b_avg, b_lb, b_ub))
+}
+
+get_metric <- function(thr_rds, m) {
+  list(avg = thr_rds$avg[thr_rds$metric == m],
+       lb = thr_rds$lb[thr_rds$metric == m],
+       ub = thr_rds$ub[thr_rds$metric == m])
 }
 
 rows <- list()
@@ -260,19 +258,25 @@ for (i in 1:nrow(models)) {
   nb_treat_all <- dd$ta_intercept + dd$ta_slope * threshold
   nb_ref <- max(nb_treat_all, 0)
 
-  dev_cm <- extract_cm(td$thr[[1]])
-  test_cm <- extract_cm(tt$thr[[1]])
+  pairs <- list(
+    list(label = "PPV/TPR", m1 = "ppv", m2 = "tpr"),
+    list(label = "NPV/TNR", m1 = "npv", m2 = "tnr")
+  )
 
-  for (j in 1:4) {
+  for (j in seq_along(pairs)) {
+    p <- pairs[[j]]
+    d1 <- get_metric(td$thr[[1]], p$m1); d2 <- get_metric(td$thr[[1]], p$m2)
+    t1 <- get_metric(tt$thr[[1]], p$m1); t2 <- get_metric(tt$thr[[1]], p$m2)
+
     rows[[length(rows) + 1]] <- data.frame(
       Model = if (j == 1) m$model_id else "",
       Figure = if (j == 1) m$figure_ref else "",
       Threshold = if (j == 1) sprintf("%.2f", threshold) else "",
       `NB Model` = if (j == 1) ifelse(is.nan(nb_model), "—", sprintf("%.4f", nb_model)) else "",
       `NB Ref` = if (j == 1) sprintf("%.4f", nb_ref) else "",
-      Metrics = dev_cm$metric[j],
-      Dev = fmt_cm(dev_cm$avg[j], dev_cm$lb[j], dev_cm$ub[j]),
-      Test = fmt_cm(test_cm$avg[j], test_cm$lb[j], test_cm$ub[j]),
+      Metrics = p$label,
+      Dev = fmt_pair(d1$avg, d1$lb, d1$ub, d2$avg, d2$lb, d2$ub),
+      Test = fmt_pair(t1$avg, t1$lb, t1$ub, t2$avg, t2$lb, t2$ub),
       check.names = FALSE
     )
   }
