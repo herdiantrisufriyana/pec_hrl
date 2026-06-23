@@ -340,6 +340,50 @@ for (i in 1:nrow(disc_cal_data)) {
   }
   test_by_node <- setNames(test_nodes, sapply(test_nodes, \(x) x$node))
 
+  # --- Bar plot: NB Model vs NB Ref per ontology ---
+  nb_plot_data <- do.call(rbind, lapply(dev_nodes, \(dn) {
+    # Tree label without genes
+    label <- dn$original_id
+    if (!is.null(tree_order)) {
+      idx <- match(dn$node, tree_order$eval_node)
+      if (!is.na(idx)) {
+        raw_display <- tree_order$display[idx]
+        label <- sub(" \\(.*\\)$", "", raw_display)
+      }
+    }
+    if (dn$node == "root" && label == dn$original_id) label <- "root"
+    data.frame(
+      ontology = label,
+      nb_model = ifelse(is.nan(dn$nb_model), 0, dn$nb_model),
+      nb_ref = ifelse(is.na(dn$nb_ref), 0, dn$nb_ref),
+      order = which(sapply(dev_nodes, \(x) x$node) == dn$node)
+    )
+  }))
+  # Make labels unique for factor levels
+  if (any(duplicated(nb_plot_data$ontology))) {
+    nb_plot_data$ontology <- make.unique(nb_plot_data$ontology)
+  }
+  nb_plot_data$ontology <- factor(nb_plot_data$ontology, levels = rev(nb_plot_data$ontology))
+
+  nb_long <- nb_plot_data |>
+    select(ontology, nb_model, nb_ref) |>
+    pivot_longer(cols = c(nb_model, nb_ref), names_to = "type", values_to = "nb") |>
+    mutate(type = factor(type, levels = c("nb_ref", "nb_model"), labels = c("NB Ref", "NB Model")))
+
+  nb_plot <- ggplot(nb_long, aes(x = nb, y = ontology, fill = type)) +
+    geom_col(position = "identity", width = 0.7, alpha = 0.8) +
+    scale_fill_manual(values = c("NB Ref" = "grey70", "NB Model" = "steelblue")) +
+    geom_vline(xintercept = 0, color = "black", linewidth = 0.3) +
+    labs(x = "Net benefit (dev set)", y = NULL, fill = NULL) +
+    theme_minimal() +
+    theme(
+      axis.text.y = element_text(family = "mono", size = 7, hjust = 1),
+      legend.position = "top"
+    )
+
+  print(nb_plot)
+  cat("\n\n")
+
   rows <- list()
   for (dn in dev_nodes) {
     tn <- test_by_node[[dn$node]]
