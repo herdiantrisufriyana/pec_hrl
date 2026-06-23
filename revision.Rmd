@@ -411,12 +411,13 @@ for (i in 1:nrow(disc_cal_data)) {
   dev <- m$metrics_dev[[1]]
   test <- m$metrics_test[[1]]
 
-  # Order by tree traversal
+  # Order by tree traversal, with DI-VNN root first
   if (!is.null(tree_order)) {
+    root_idx <- which(dev$node == "root" & !"root" %in% tree_order$eval_node)
     dev_order <- match(tree_order$eval_node, dev$node)
     dev_order <- dev_order[!is.na(dev_order)]
-    remaining <- setdiff(seq_len(nrow(dev)), dev_order)
-    dev <- dev[c(dev_order, remaining), ]
+    remaining <- setdiff(seq_len(nrow(dev)), c(root_idx, dev_order))
+    dev <- dev[c(root_idx, dev_order, remaining), ]
   } else {
     dev <- dev |> arrange(node != "root", node)
   }
