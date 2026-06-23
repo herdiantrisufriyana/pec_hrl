@@ -139,8 +139,8 @@ build_tree_order <- function(ontology_csv_path, ont_name_file = NULL) {
     label <- paste0(mapped, gene_str)
 
     if (node == root_node) {
-      display <- paste0("root", gene_str)
-      eval_id <- "root"
+      display <- paste0(label, gene_str)
+      eval_id <- eval_node
     } else {
       connector <- if (is_last) "\U2514\U2500\U2500 " else "\U251C\U2500\U2500 "
       display <- paste0(prefix, connector, label)
