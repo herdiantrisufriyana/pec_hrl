@@ -94,6 +94,84 @@ disc_cal_data <- models |>
   ungroup()
 ```
 
+```{r Helper function for building ontology tree, include=FALSE}
+build_tree_order <- function(ontology_csv_path, ont_name_file = NULL) {
+  raw <- read.csv(ontology_csv_path, header = FALSE,
+                  col.names = c("source", "target", "similarity", "relation"))
+
+  # Separate hierarchy (is_a) and features
+  hierarchy <- raw[raw$relation == "is_a", c("source", "target")]
+  features <- raw[raw$relation == "feature", c("source", "target")]
+
+  # Find root: target that's never a source in hierarchy
+  all_parents <- unique(hierarchy$target)
+  all_children <- unique(hierarchy$source)
+  root_node <- setdiff(all_parents, all_children)
+  if (length(root_node) == 0) root_node <- all_parents[1]
+  root_node <- root_node[1]
+
+  # Get genes per ontology node
+  genes_per_node <- split(features$source, features$target)
+
+  # Map ONT IDs to original names
+  ont_map <- setNames(nm = unique(c(hierarchy$source, hierarchy$target)))
+  if (!is.null(ont_name_file) && file.exists(ont_name_file)) {
+    ont_names <- read.csv(ont_name_file)
+    for (j in seq_len(nrow(ont_names))) {
+      ont_map[ont_names$new_oid[j]] <- ont_names$old_oid[j]
+    }
+  }
+
+  # Build children map
+  children_of <- split(hierarchy$source, hierarchy$target)
+
+  # DFS traversal to get tree order with prefixes
+  result <- list()
+  dfs <- function(node, prefix, is_last) {
+    mapped <- if (!is.null(ont_map[node]) && !is.na(ont_map[node])) ont_map[node] else node
+    # Strip ONT: prefix for matching with eval files
+    eval_node <- gsub(":", "", node)
+
+    genes <- genes_per_node[[node]]
+    gene_str <- if (!is.null(genes) && length(genes) > 0) paste0(" (", paste(genes, collapse=", "), ")") else ""
+
+    label <- paste0(mapped, gene_str)
+
+    if (node == root_node) {
+      display <- paste0("root", gene_str)
+      eval_id <- "root"
+    } else {
+      connector <- if (is_last) "\U2514\U2500\U2500 " else "\U251C\U2500\U2500 "
+      display <- paste0(prefix, connector, label)
+      eval_id <- eval_node
+    }
+
+    result[[length(result) + 1]] <<- list(display = display, eval_node = eval_id)
+
+    kids <- children_of[[node]]
+    if (!is.null(kids) && length(kids) > 0) {
+      kids <- sort(kids)
+      for (k in seq_along(kids)) {
+        child_is_last <- (k == length(kids))
+        new_prefix <- if (node == root_node) {
+          ""
+        } else {
+          paste0(prefix, if (is_last) "    " else "\U2502   ")
+        }
+        dfs(kids[k], new_prefix, child_is_last)
+      }
+    }
+  }
+
+  dfs(root_node, "", TRUE)
+  data.frame(
+    display = sapply(result, \(x) x$display),
+    eval_node = sapply(result, \(x) x$eval_node),
+    stringsAsFactors = FALSE
+  )
+}
+```
+
 ```{r Helper functions for threshold tables, include=FALSE}
 fmt_cm <- function(x, lb, ub) ifelse(is.nan(x) | is.na(x), "—", sprintf("%.1f%% (%.1f, %.1f)", x, lb, ub))
 
@@ -151,11 +229,23 @@ for (i in 1:nrow(disc_cal_data)) {
 
   cat(sprintf("\n# %s\n\n", section_title))
 
-  # --- Table A: Threshold values and confusion matrices ---
+  # --- Build tree order ---
   ont_name_file <- paste0("data/ontology/", m$model_prefix, ".csv")
+  tree_csv <- paste0("data/ontology_tree/", m$model_prefix, ".csv")
+  tree_order <- if (file.exists(tree_csv)) build_tree_order(tree_csv, ont_name_file) else NULL
+
+  # --- Table A: Threshold values and confusion matrices ---
   dev_nodes_raw <- extract_thr_for_model(m$model_prefix, "data/eval_train/", ont_name_file)
-  dev_nodes <- dev_nodes_raw[order(sapply(dev_nodes_raw, \(x) x$node != "root"), sapply(dev_nodes_raw, \(x) x$node))]
   test_nodes <- extract_thr_for_model(m$model_prefix, "data/eval/", ont_name_file)
+
+  # Order dev_nodes by tree traversal
+  dev_by_node <- setNames(dev_nodes_raw, sapply(dev_nodes_raw, \(x) x$node))
+  if (!is.null(tree_order)) {
+    dev_nodes <- lapply(tree_order$eval_node, \(n) dev_by_node[[n]])
+    dev_nodes <- dev_nodes[!sapply(dev_nodes, is.null)]
+  } else {
+    dev_nodes <- dev_nodes_raw[order(sapply(dev_nodes_raw, \(x) x$node != "root"), sapply(dev_nodes_raw, \(x) x$node))]
+  }
   test_by_node <- setNames(test_nodes, sapply(test_nodes, \(x) x$node))
 
   rows <- list()
@@ -173,8 +263,15 @@ for (i in 1:nrow(disc_cal_data)) {
       valid_dev <- is.finite(d1$lb) && d1$lb > 0 && is.finite(d2$lb) && d2$lb > 0
       valid_test <- is.finite(t1$lb) && t1$lb > 0 && is.finite(t2$lb) && t2$lb > 0
       valid <- if (valid_dev && valid_test) "Yes" else "No"
+      # Get tree display name
+      tree_display <- dn$original_id
+      if (!is.null(tree_order)) {
+        idx <- match(dn$node, tree_order$eval_node)
+        if (!is.na(idx)) tree_display <- tree_order$display[idx]
+      }
+
       rows[[length(rows) + 1]] <- data.frame(
-        Ontology = if (j == 1) dn$original_id else "",
+        Ontology = if (j == 1) tree_display else "",
         Threshold = if (j == 1) sprintf("%.2f", dn$threshold) else "",
         `NB Model` = if (j == 1) ifelse(is.nan(dn$nb_model), "—", sprintf("%.4f", dn$nb_model)) else "",
         `NB Ref` = if (j == 1) ifelse(is.na(dn$nb_ref), "—", sprintf("%.4f", dn$nb_ref)) else "",
@@ -198,13 +295,33 @@ for (i in 1:nrow(disc_cal_data)) {
   cat("\n\n<br><br>\n\n")
 
   # --- Table B: AUROC, AUPRC, and calibration ---
-  dev <- m$metrics_dev[[1]] |> arrange(node != "root", node)
-  test <- m$metrics_test[[1]] |> arrange(node != "root", node)
+  dev <- m$metrics_dev[[1]]
+  test <- m$metrics_test[[1]]
+
+  # Order by tree traversal
+  if (!is.null(tree_order)) {
+    dev_order <- match(tree_order$eval_node, dev$node)
+    dev_order <- dev_order[!is.na(dev_order)]
+    remaining <- setdiff(seq_len(nrow(dev)), dev_order)
+    dev <- dev[c(dev_order, remaining), ]
+  } else {
+    dev <- dev |> arrange(node != "root", node)
+  }
+
   test_matched <- dev |>
     select(node) |>
     left_join(test |> select(node, auroc, auroc_ci, auprc, rmse, rmse_ci), by = "node", suffix = c("", "_test"))
 
-  combined <- data.frame(Ontology = dev$original_id) |>
+  # Use tree display names
+  ontology_labels <- dev$original_id
+  if (!is.null(tree_order)) {
+    for (k in seq_along(ontology_labels)) {
+      idx <- match(dev$node[k], tree_order$eval_node)
+      if (!is.na(idx)) ontology_labels[k] <- tree_order$display[idx]
+    }
+  }
+
+  combined <- data.frame(Ontology = ontology_labels) |>
     cbind(
       data.frame(
         `AUC-ROC (Dev)` = fmt_auroc(dev$auroc, dev$auroc_ci),
