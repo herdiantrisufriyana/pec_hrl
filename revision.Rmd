@@ -410,6 +410,44 @@ for (i in 1:nrow(disc_cal_data)) {
   tree_csv <- paste0("data/ontology_tree/", m$model_prefix, ".csv")
   tree_order <- if (file.exists(tree_csv)) build_tree_order(tree_csv, ont_name_file) else NULL
 
+  # --- Build reported-ontology mapping ---
+  # For each node, find which reported ontology (B) it maps to:
+  # - If the node IS reported: maps to itself
+  # - If the node has C3-eligible genes (raw) that are a subset of a reported one: maps to that
+  # - Otherwise: empty
+  gc_eligible <- gradcam_eligible[[m$model_prefix]]
+  gc_raw <- gradcam_eligible_raw[[m$model_prefix]]
+  reported_nodes <- if (!is.null(gc_eligible)) names(gc_eligible) else character(0)
+
+  # Load ontology name mapping for display
+  ont_names_df <- if (file.exists(ont_name_file)) read.csv(ont_name_file) else NULL
+  node_to_display <- function(eval_node) {
+    if (eval_node == "root") return("root")
+    if (!is.null(ont_names_df)) {
+      colon_form <- sub("ONT", "ONT:", eval_node)
+      row <- ont_names_df[ont_names_df$new_oid == colon_form, ]
+      if (nrow(row) > 0) return(row$old_oid[1])
+    }
+    eval_node
+  }
+
+  get_reported_label <- function(node) {
+    if (node %in% reported_nodes) return(node_to_display(node))
+    if (!is.null(gc_raw) && node %in% names(gc_raw)) {
+      node_genes <- sort(gc_raw[[node]])
+      for (rn in reported_nodes) {
+        rn_genes <- sort(gc_eligible[[rn]])
+        if (all(node_genes %in% rn_genes)) return(node_to_display(rn))
+      }
+      # Dedup case: identical gene set
+      for (rn in reported_nodes) {
+        rn_genes <- sort(gc_eligible[[rn]])
+        if (identical(node_genes, rn_genes)) return(node_to_display(rn))
+      }
+    }
+    ""
+  }
+
   # --- Table A: Threshold values and confusion matrices ---
   dev_nodes_raw <- extract_thr_for_model(m$model_prefix, "data/eval_train/", ont_name_file)
   test_nodes <- extract_thr_for_model(m$model_prefix, "data/eval/", ont_name_file)
@@ -555,6 +593,8 @@ for (i in 1:nrow(disc_cal_data)) {
     }
     tree_display <- paste0(raw_no_genes, gene_str)
 
+    reported_str <- get_reported_label(dn$node)
+
     rows[[length(rows) + 1]] <- data.frame(
       Ontology = tree_display,
       `PPV/TPR (Dev)` = fmt_pair(d_ppv$avg, d_ppv$lb, d_ppv$ub, d_tpr$avg, d_tpr$lb, d_tpr$ub),
@@ -562,6 +602,7 @@ for (i in 1:nrow(disc_cal_data)) {
       `NPV/TNR (Dev)` = fmt_pair(d_npv$avg, d_npv$lb, d_npv$ub, d_tnr$avg, d_tnr$lb, d_tnr$ub),
       `NPV/TNR (Test)` = fmt_pair(t_npv$avg, t_npv$lb, t_npv$ub, t_tnr$avg, t_tnr$lb, t_tnr$ub),
       C1 = c1_str, C2 = c2_str, C3 = c3_str,
+      Reported = reported_str,
       check.names = FALSE
     )
   }
@@ -579,6 +620,7 @@ for (i in 1:nrow(disc_cal_data)) {
   )
   cat('\n</div>\n')
   cat("\n```\n\n")
+  cat("**Reported column:** The ontology from the manuscript (Tables 1–2) to which this row's eligible genes belong. An ontology is reported if it passes all three criteria (C1, C2, C3) and its eligible gene set is not a strict subset of another passing ontology's gene set. Rows are empty when the ontology has no eligible genes or does not pass all three criteria.\n\n")
 
   cat("\n\n<br><br>\n\n")
 
@@ -663,6 +705,9 @@ for (i in 1:nrow(disc_cal_data)) {
     c3_vec <- c(c3_vec, if(c3_k) "\U2713" else "")
   }
 
+  # Reported column for AUROC table
+  reported_vec <- sapply(dev$node, get_reported_label)
+
   combined <- data.frame(Ontology = ontology_labels) |>
     cbind(
       data.frame(
@@ -673,6 +718,7 @@ for (i in 1:nrow(disc_cal_data)) {
         `RMSE (Dev)` = fmt_rmse(dev$rmse, dev$rmse_ci),
         `RMSE (Test)` = fmt_rmse(test_matched$rmse, test_matched$rmse_ci),
         C1 = c1_vec, C2 = c2_vec, C3 = c3_vec,
+        Reported = reported_vec,
         check.names = FALSE
       )
     )
@@ -689,6 +735,7 @@ for (i in 1:nrow(disc_cal_data)) {
   )
   cat('\n</div>\n')
   cat("\n```\n\n")
+  cat("**Reported column:** The ontology from the manuscript (Tables 1–2) to which this row's eligible genes belong. An ontology is reported if it passes all three criteria (C1, C2, C3) and its eligible gene set is not a strict subset of another passing ontology's gene set. Rows are empty when the ontology has no eligible genes or does not pass all three criteria.\n\n")
 
   cat("\n\n")
 }
