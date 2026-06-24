@@ -860,7 +860,10 @@ for (i in 1:nrow(disc_cal_data)) {
 # Training-validation convergence
 
 ```{r Load convergence data, include=FALSE}
+# Only load for the 3 surviving models (C1-C4 passing)
+surviving_models <- c("LOPE_CHOR", "LOPE_HELLP", "EOPE_HELLP")
 conv_data <- models |>
+  filter(model_id %in% surviving_models) |>
   rowwise() |>
   mutate(
     hist_file = paste0("data/history/", model_prefix, "_history.csv"),
@@ -869,7 +872,7 @@ conv_data <- models |>
   ungroup()
 ```
 
-```{r Convergence plots, echo=FALSE, fig.width=12, fig.height=8, warning=FALSE}
+```{r Convergence plots, echo=FALSE, fig.width=12, fig.height=4, warning=FALSE}
 conv_plots <- conv_data |>
   filter(!map_lgl(history, is.null)) |>
   rowwise() |>
@@ -882,10 +885,10 @@ conv_plots <- conv_data |>
       scale_color_manual(values = c("training" = "steelblue", "validation" = "darkred")) +
       theme_minimal() + theme(plot.title = element_text(size = 10), legend.position = "bottom")
   })) |> pull(plot)
-ggarrange(plotlist = conv_plots, ncol = 3, nrow = 3, common.legend = TRUE, legend = "bottom")
+ggarrange(plotlist = conv_plots, ncol = 3, nrow = 1, common.legend = TRUE, legend = "bottom")
 ```
 
-```{r Convergence AUC plots, echo=FALSE, fig.width=12, fig.height=8, warning=FALSE}
+```{r Convergence AUC plots, echo=FALSE, fig.width=12, fig.height=4, warning=FALSE}
 conv_auc_plots <- conv_data |>
   filter(!map_lgl(history, is.null)) |>
   rowwise() |>
@@ -899,6 +902,6 @@ conv_auc_plots <- conv_data |>
       ylim(0, 1) +
       theme_minimal() + theme(plot.title = element_text(size = 10), legend.position = "bottom")
   })) |> pull(plot)
-ggarrange(plotlist = conv_auc_plots, ncol = 3, nrow = 3, common.legend = TRUE, legend = "bottom")
+ggarrange(plotlist = conv_auc_plots, ncol = 3, nrow = 1, common.legend = TRUE, legend = "bottom")
 ```
 
