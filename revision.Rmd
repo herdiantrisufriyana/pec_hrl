@@ -398,86 +398,78 @@ for (i in 1:nrow(disc_cal_data)) {
   rows <- list()
   for (dn in dev_nodes) {
     tn <- test_by_node[[dn$node]]
-    pairs <- list(
-      list(label = "PPV/TPR", m1 = "ppv", m2 = "tpr"),
-      list(label = "NPV/TNR", m1 = "npv", m2 = "tnr")
-    )
-    for (j in seq_along(pairs)) {
-      p <- pairs[[j]]
-      d1 <- get_metric(dn$thr, p$m1); d2 <- get_metric(dn$thr, p$m2)
-      t1 <- if (!is.null(tn)) get_metric(tn$thr, p$m1) else list(avg=NA, lb=NA, ub=NA)
-      t2 <- if (!is.null(tn)) get_metric(tn$thr, p$m2) else list(avg=NA, lb=NA, ub=NA)
-      # Criterion 1: lower bounds finite and >0 in both dev and test
-      valid_c1_dev <- is.finite(d1$lb) && d1$lb > 0 && is.finite(d2$lb) && d2$lb > 0
-      valid_c1_test <- is.finite(t1$lb) && t1$lb > 0 && is.finite(t2$lb) && t2$lb > 0
-      valid_c1 <- valid_c1_dev && valid_c1_test
 
-      # Criterion 2: absolute difference ≤25% between dev and test averages
-      valid_c2 <- !is.nan(d1$avg) && !is.nan(d2$avg) && !is.nan(t1$avg) && !is.nan(t2$avg) &&
-        abs(d1$avg - t1$avg) <= 25 && abs(d2$avg - t2$avg) <= 25
+    # PPV/TPR pair
+    d_ppv <- get_metric(dn$thr, "ppv"); d_tpr <- get_metric(dn$thr, "tpr")
+    t_ppv <- if (!is.null(tn)) get_metric(tn$thr, "ppv") else list(avg=NA, lb=NA, ub=NA)
+    t_tpr <- if (!is.null(tn)) get_metric(tn$thr, "tpr") else list(avg=NA, lb=NA, ub=NA)
 
-      # Criterion 3: grad-CAM >97.5th percentile (at least 1 gene in this ontology)
-      gc_eligible <- gradcam_eligible[[m$model_prefix]]
-      valid_c3 <- if (!is.null(gc_eligible) && length(gc_eligible) > 0) dn$node %in% names(gc_eligible) else FALSE
+    # NPV/TNR pair
+    d_npv <- get_metric(dn$thr, "npv"); d_tnr <- get_metric(dn$thr, "tnr")
+    t_npv <- if (!is.null(tn)) get_metric(tn$thr, "npv") else list(avg=NA, lb=NA, ub=NA)
+    t_tnr <- if (!is.null(tn)) get_metric(tn$thr, "tnr") else list(avg=NA, lb=NA, ub=NA)
 
-      valid_c1 <- isTRUE(valid_c1)
-      valid_c2 <- isTRUE(valid_c2)
-      valid_c3 <- isTRUE(valid_c3)
-      c1_str <- if (valid_c1) "\U2713" else ""
-      c2_str <- if (valid_c2) "\U2713" else ""
-      c3_str <- if (valid_c3) "\U2713" else ""
+    # C1 per pair
+    c1_pt <- isTRUE(is.finite(d_ppv$lb) && d_ppv$lb > 0 && is.finite(d_tpr$lb) && d_tpr$lb > 0 &&
+                    is.finite(t_ppv$lb) && t_ppv$lb > 0 && is.finite(t_tpr$lb) && t_tpr$lb > 0)
+    c1_nt <- isTRUE(is.finite(d_npv$lb) && d_npv$lb > 0 && is.finite(d_tnr$lb) && d_tnr$lb > 0 &&
+                    is.finite(t_npv$lb) && t_npv$lb > 0 && is.finite(t_tnr$lb) && t_tnr$lb > 0)
 
-      # Get tree display name with ontotype genes and dagger marking
-      tree_display <- dn$original_id
-      ont_genes_list <- ontotype_genes[[m$model_prefix]]
-      eligible_genes <- if (!is.null(gc_eligible)) gc_eligible[[dn$node]] else character(0)
+    # C2 per pair
+    c2_pt <- isTRUE(!is.nan(d_ppv$avg) && !is.nan(d_tpr$avg) && !is.nan(t_ppv$avg) && !is.nan(t_tpr$avg) &&
+                    abs(d_ppv$avg - t_ppv$avg) <= 25 && abs(d_tpr$avg - t_tpr$avg) <= 25)
+    c2_nt <- isTRUE(!is.nan(d_npv$avg) && !is.nan(d_tnr$avg) && !is.nan(t_npv$avg) && !is.nan(t_tnr$avg) &&
+                    abs(d_npv$avg - t_npv$avg) <= 25 && abs(d_tnr$avg - t_tnr$avg) <= 25)
 
-      # Get genes from ontotype
-      node_genes <- if (!is.null(ont_genes_list)) ont_genes_list[[dn$node]] else character(0)
+    # C3
+    gc_eligible <- gradcam_eligible[[m$model_prefix]]
+    valid_c3 <- isTRUE(if (!is.null(gc_eligible) && length(gc_eligible) > 0) dn$node %in% names(gc_eligible) else FALSE)
 
-      if (!is.null(tree_order)) {
-        idx <- match(dn$node, tree_order$eval_node)
-        if (!is.na(idx)) {
-          # Fall back to ontology CSV genes if ontotype not available
-          if (is.null(node_genes) || length(node_genes) == 0) {
-            node_genes <- tree_order$genes[[idx]]
-          }
-          raw_display <- tree_order$display[idx]
-          raw_no_genes <- sub(" \\(.*\\)$", "", raw_display)
-        } else {
-          raw_no_genes <- dn$node
-        }
+    c1_str <- paste0(if (c1_pt) "\U2713" else "", "|", if (c1_nt) "\U2713" else "")
+    c2_str <- paste0(if (c1_pt && c2_pt) "\U2713" else "", "|", if (c1_nt && c2_nt) "\U2713" else "")
+    c3_str <- if (valid_c3) "\U2713" else ""
+
+    # Tree display with genes
+    tree_display <- dn$original_id
+    ont_genes_list <- ontotype_genes[[m$model_prefix]]
+    eligible_genes <- if (!is.null(gc_eligible)) gc_eligible[[dn$node]] else character(0)
+    node_genes <- if (!is.null(ont_genes_list)) ont_genes_list[[dn$node]] else character(0)
+
+    if (!is.null(tree_order)) {
+      idx <- match(dn$node, tree_order$eval_node)
+      if (!is.na(idx)) {
+        if (is.null(node_genes) || length(node_genes) == 0) node_genes <- tree_order$genes[[idx]]
+        raw_display <- tree_order$display[idx]
+        raw_no_genes <- sub(" \\(.*\\)$", "", raw_display)
       } else {
         raw_no_genes <- dn$node
       }
-
-      if (length(node_genes) > 0) {
-        marked_genes <- sapply(node_genes, \(g) if (g %in% eligible_genes) paste0(g, "\U2020") else g)
-        gene_str <- paste0(" (", paste(marked_genes, collapse = ", "), ")")
-      } else {
-        gene_str <- ""
-      }
-      tree_display <- paste0(raw_no_genes, gene_str)
-
-      rows[[length(rows) + 1]] <- data.frame(
-        Ontology = if (j == 1) tree_display else "",
-        Threshold = if (j == 1) sprintf("%.2f", dn$threshold) else "",
-        `NB Model` = if (j == 1) ifelse(is.nan(dn$nb_model), "—", sprintf("%.4f", dn$nb_model)) else "",
-        `NB Ref` = if (j == 1) ifelse(is.na(dn$nb_ref), "—", sprintf("%.4f", dn$nb_ref)) else "",
-        Metrics = p$label,
-        Dev = fmt_pair(d1$avg, d1$lb, d1$ub, d2$avg, d2$lb, d2$ub),
-        Test = fmt_pair(t1$avg, t1$lb, t1$ub, t2$avg, t2$lb, t2$ub),
-        C1 = c1_str,
-        C2 = c2_str,
-        C3 = c3_str,
-        check.names = FALSE
-      )
+    } else {
+      raw_no_genes <- dn$node
     }
+
+    if (length(node_genes) > 0) {
+      marked_genes <- sapply(node_genes, \(g) if (g %in% eligible_genes) paste0(g, "\U2020") else g)
+      gene_str <- paste0(" (", paste(marked_genes, collapse = ", "), ")")
+    } else {
+      gene_str <- ""
+    }
+    tree_display <- paste0(raw_no_genes, gene_str)
+
+    rows[[length(rows) + 1]] <- data.frame(
+      Ontology = tree_display,
+      `PPV/TPR (Dev)` = fmt_pair(d_ppv$avg, d_ppv$lb, d_ppv$ub, d_tpr$avg, d_tpr$lb, d_tpr$ub),
+      `PPV/TPR (Test)` = fmt_pair(t_ppv$avg, t_ppv$lb, t_ppv$ub, t_tpr$avg, t_tpr$lb, t_tpr$ub),
+      `NPV/TNR (Dev)` = fmt_pair(d_npv$avg, d_npv$lb, d_npv$ub, d_tnr$avg, d_tnr$lb, d_tnr$ub),
+      `NPV/TNR (Test)` = fmt_pair(t_npv$avg, t_npv$lb, t_npv$ub, t_tnr$avg, t_tnr$lb, t_tnr$ub),
+      C1 = c1_str, C2 = c2_str, C3 = c3_str,
+      check.names = FALSE
+    )
   }
 
   print(
     do.call(rbind, rows) |>
-      kable(caption = paste0("Table ", 2*i - 1, ". Threshold values and confusion matrices — ", section_title, "."), format = "html") |>
+      kable(caption = paste0("Table ", 2*i - 1, ". Confusion matrices — ", section_title, "."), format = "html") |>
       kable_classic(full_width = TRUE) |>
       kable_styling(font_size = 12) |>
       scroll_box(height = "400px", width = "100%")
@@ -534,34 +526,36 @@ for (i in 1:nrow(disc_cal_data)) {
     ontology_labels[k] <- paste0(raw_no_genes, gene_str)
   }
 
-  # Compute C1, C2, C3 for each node in AUROC table
+  # Compute C1, C2, C3 for each node in AUROC table (same ✓|✓ format)
   c1_vec <- c(); c2_vec <- c(); c3_vec <- c()
   for (k in seq_len(nrow(dev))) {
     node_k <- dev$node[k]
     dev_thr_f <- paste0("data/eval_train/", m$model_prefix, "_", node_k, "_thresholding.rds")
     test_thr_f <- paste0("data/eval/", m$model_prefix, "_", node_k, "_thresholding.rds")
 
-    c1_k <- FALSE; c2_k <- FALSE
+    c1_pt <- FALSE; c1_nt <- FALSE; c2_pt <- FALSE; c2_nt <- FALSE
     if (file.exists(dev_thr_f) && file.exists(test_thr_f)) {
       dev_thr <- readRDS(dev_thr_f); test_thr <- readRDS(test_thr_f)
-      for (pair in list(c("ppv","tpr"), c("npv","tnr"))) {
-        d1 <- get_metric(dev_thr, pair[1]); d2 <- get_metric(dev_thr, pair[2])
-        t1 <- get_metric(test_thr, pair[1]); t2 <- get_metric(test_thr, pair[2])
-        c1_pair <- isTRUE(is.finite(d1$lb) && d1$lb > 0 && is.finite(d2$lb) && d2$lb > 0 &&
-                          is.finite(t1$lb) && t1$lb > 0 && is.finite(t2$lb) && t2$lb > 0)
-        c2_pair <- isTRUE(!is.nan(d1$avg) && !is.nan(d2$avg) && !is.nan(t1$avg) && !is.nan(t2$avg) &&
-                          abs(d1$avg - t1$avg) <= 25 && abs(d2$avg - t2$avg) <= 25)
-        if (c1_pair) c1_k <- TRUE
-        if (c1_pair && c2_pair) c2_k <- TRUE
-      }
+      d_ppv <- get_metric(dev_thr,"ppv"); d_tpr <- get_metric(dev_thr,"tpr")
+      t_ppv <- get_metric(test_thr,"ppv"); t_tpr <- get_metric(test_thr,"tpr")
+      d_npv <- get_metric(dev_thr,"npv"); d_tnr <- get_metric(dev_thr,"tnr")
+      t_npv <- get_metric(test_thr,"npv"); t_tnr <- get_metric(test_thr,"tnr")
+
+      c1_pt <- isTRUE(is.finite(d_ppv$lb) && d_ppv$lb>0 && is.finite(d_tpr$lb) && d_tpr$lb>0 &&
+                       is.finite(t_ppv$lb) && t_ppv$lb>0 && is.finite(t_tpr$lb) && t_tpr$lb>0)
+      c1_nt <- isTRUE(is.finite(d_npv$lb) && d_npv$lb>0 && is.finite(d_tnr$lb) && d_tnr$lb>0 &&
+                       is.finite(t_npv$lb) && t_npv$lb>0 && is.finite(t_tnr$lb) && t_tnr$lb>0)
+      c2_pt <- isTRUE(!is.nan(d_ppv$avg) && !is.nan(d_tpr$avg) && !is.nan(t_ppv$avg) && !is.nan(t_tpr$avg) &&
+                       abs(d_ppv$avg-t_ppv$avg)<=25 && abs(d_tpr$avg-t_tpr$avg)<=25)
+      c2_nt <- isTRUE(!is.nan(d_npv$avg) && !is.nan(d_tnr$avg) && !is.nan(t_npv$avg) && !is.nan(t_tnr$avg) &&
+                       abs(d_npv$avg-t_npv$avg)<=25 && abs(d_tnr$avg-t_tnr$avg)<=25)
     }
 
-    gc_elig <- gc_eligible
-    c3_k <- if (!is.null(gc_elig) && length(gc_elig) > 0) isTRUE(node_k %in% names(gc_elig)) else FALSE
+    c3_k <- isTRUE(if (!is.null(gc_eligible) && length(gc_eligible) > 0) node_k %in% names(gc_eligible) else FALSE)
 
-    c1_vec <- c(c1_vec, if (c1_k) "\U2713" else "")
-    c2_vec <- c(c2_vec, if (c2_k) "\U2713" else "")
-    c3_vec <- c(c3_vec, if (c3_k) "\U2713" else "")
+    c1_vec <- c(c1_vec, paste0(if(c1_pt) "\U2713" else "", "|", if(c1_nt) "\U2713" else ""))
+    c2_vec <- c(c2_vec, paste0(if(c1_pt && c2_pt) "\U2713" else "", "|", if(c1_nt && c2_nt) "\U2713" else ""))
+    c3_vec <- c(c3_vec, if(c3_k) "\U2713" else "")
   }
 
   combined <- data.frame(Ontology = ontology_labels) |>
