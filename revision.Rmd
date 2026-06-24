@@ -748,8 +748,8 @@ for (i in seq_len(nrow(models))) {
   m <- models[i, ]
   prefix <- m$model_prefix
   ont_name_file <- paste0("data/ontology/", prefix, ".csv")
-  gc_raw <- gradcam_eligible_raw[[prefix]]
-  if (is.null(gc_raw) || length(gc_raw) == 0) next
+  gc_filt <- gradcam_eligible[[prefix]]
+  if (is.null(gc_filt) || length(gc_filt) == 0) next
 
   # Get C1+C2 passing nodes
   dev_nodes_raw <- extract_thr_for_model(prefix, "data/eval_train/", ont_name_file)
@@ -780,8 +780,8 @@ for (i in seq_len(nrow(models))) {
     if (c1 && c2) c1c2_nodes <- c(c1c2_nodes, dn$node)
   }
 
-  # C1+C2+C3 nodes (raw, before subset removal)
-  c123_nodes <- intersect(names(gc_raw), c1c2_nodes)
+  # C1+C2+C3 nodes (filtered, matching table C3 checkmarks)
+  c123_nodes <- intersect(names(gc_filt), c1c2_nodes)
   if (length(c123_nodes) == 0) next
 
   # Map eval node to display name
