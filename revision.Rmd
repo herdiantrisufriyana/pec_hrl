@@ -326,17 +326,28 @@ for (i in 1:nrow(disc_cal_data)) {
   dev_nodes_raw <- extract_thr_for_model(m$model_prefix, "data/eval_train/", ont_name_file)
   test_nodes <- extract_thr_for_model(m$model_prefix, "data/eval/", ont_name_file)
 
-  # Order dev_nodes by tree traversal, then append "root" if not already in tree
-  dev_by_node <- setNames(dev_nodes_raw, sapply(dev_nodes_raw, \(x) x$node))
-  if (!is.null(tree_order)) {
-    dev_nodes <- lapply(tree_order$eval_node, \(n) dev_by_node[[n]])
-    dev_nodes <- dev_nodes[!sapply(dev_nodes, is.null)]
-    # Add literal "root" node if it exists but isn't in the tree
-    if ("root" %in% names(dev_by_node) && !"root" %in% tree_order$eval_node) {
-      dev_nodes <- c(list(dev_by_node[["root"]]), dev_nodes)
+  # Deduplicate and sort: root first, then by node name
+  seen <- c()
+  dev_nodes <- list()
+  # Add root first if exists
+  for (dn in dev_nodes_raw) {
+    if (dn$node == "root" && !"root" %in% seen) {
+      dev_nodes <- c(dev_nodes, list(dn)); seen <- c(seen, "root")
     }
-  } else {
-    dev_nodes <- dev_nodes_raw[order(sapply(dev_nodes_raw, \(x) x$node != "root"), sapply(dev_nodes_raw, \(x) x$node))]
+  }
+  # Add tree-ordered nodes
+  if (!is.null(tree_order)) {
+    for (ev in tree_order$eval_node) {
+      if (ev %in% seen) next
+      for (dn in dev_nodes_raw) {
+        if (dn$node == ev) { dev_nodes <- c(dev_nodes, list(dn)); seen <- c(seen, ev); break }
+      }
+    }
+  }
+  # Add any remaining nodes not in tree
+  for (dn in dev_nodes_raw) {
+    if (dn$node %in% seen) next
+    dev_nodes <- c(dev_nodes, list(dn)); seen <- c(seen, dn$node)
   }
   test_by_node <- setNames(test_nodes, sapply(test_nodes, \(x) x$node))
 
@@ -467,13 +478,17 @@ for (i in 1:nrow(disc_cal_data)) {
     )
   }
 
-  print(
-    do.call(rbind, rows) |>
-      kable(caption = paste0("Table ", 2*i - 1, ". Confusion matrices — ", section_title, "."), format = "html") |>
-      kable_classic(full_width = TRUE) |>
-      kable_styling(font_size = 12) |>
-      scroll_box(height = "400px", width = "100%")
+  tbl_cm <- do.call(rbind, rows)
+  cat("\n\n```{=html}\n")
+  cat(
+    as.character(
+      tbl_cm |>
+        kable(caption = paste0("Table ", 2*i - 1, ". Confusion matrices — ", section_title, "."), format = "html") |>
+        kable_classic(full_width = TRUE) |>
+        kable_styling(font_size = 12)
+    )
   )
+  cat("\n```\n\n")
 
   cat("\n\n<br><br>\n\n")
 
@@ -572,13 +587,16 @@ for (i in 1:nrow(disc_cal_data)) {
       )
     )
 
-  print(
-    combined |>
-      kable(caption = paste0("Table ", 2*i, ". AUROC, AUPRC, and calibration — ", section_title, "."), format = "html") |>
-      kable_classic(full_width = TRUE) |>
-      kable_styling(font_size = 12) |>
-      scroll_box(height = "400px", width = "100%")
+  cat("\n\n```{=html}\n")
+  cat(
+    as.character(
+      combined |>
+        kable(caption = paste0("Table ", 2*i, ". AUROC, AUPRC, and calibration — ", section_title, "."), format = "html") |>
+        kable_classic(full_width = TRUE) |>
+        kable_styling(font_size = 12)
+    )
   )
+  cat("\n```\n\n")
 
   cat("\n\n")
 }
