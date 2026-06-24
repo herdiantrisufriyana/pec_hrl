@@ -569,6 +569,14 @@ for (i in 1:nrow(disc_cal_data)) {
     c2_str <- paste0(if (c1_pt && c2_pt) "\U2713" else "", "|", if (c1_nt && c2_nt) "\U2713" else "")
     c3_str <- if (valid_c3) "\U2713" else ""
 
+    # C4: dev AUC-ROC avg > 0.5
+    disc_f <- paste0("data/eval_train/", m$model_prefix, "_", dn$node, "_discrimination.rds")
+    c4_val <- if (file.exists(disc_f)) {
+      disc <- readRDS(disc_f)
+      isTRUE(disc$metrics$estimate > 0.5)
+    } else FALSE
+    c4_str <- if (c4_val) "\U2713" else ""
+
     # Tree display with genes
     tree_display <- dn$original_id
     ont_genes_list <- ontotype_genes[[m$model_prefix]]
@@ -604,7 +612,7 @@ for (i in 1:nrow(disc_cal_data)) {
       `PPV/TPR (Test)` = fmt_pair(t_ppv$avg, t_ppv$lb, t_ppv$ub, t_tpr$avg, t_tpr$lb, t_tpr$ub),
       `NPV/TNR (Dev)` = fmt_pair(d_npv$avg, d_npv$lb, d_npv$ub, d_tnr$avg, d_tnr$lb, d_tnr$ub),
       `NPV/TNR (Test)` = fmt_pair(t_npv$avg, t_npv$lb, t_npv$ub, t_tnr$avg, t_tnr$lb, t_tnr$ub),
-      C1 = c1_str, C2 = c2_str, C3 = c3_str,
+      C1 = c1_str, C2 = c2_str, C3 = c3_str, C4 = c4_str,
       Reported = reported_str,
       check.names = FALSE
     )
@@ -737,7 +745,7 @@ for (i in 1:nrow(disc_cal_data)) {
   }
 
   # Compute C1, C2, C3 for each node in AUROC table (same ✓|✓ format)
-  c1_vec <- c(); c2_vec <- c(); c3_vec <- c()
+  c1_vec <- c(); c2_vec <- c(); c3_vec <- c(); c4_vec <- c()
   for (k in seq_len(nrow(dev))) {
     node_k <- dev$node[k]
     dev_thr_f <- paste0("data/eval_train/", m$model_prefix, "_", node_k, "_thresholding.rds")
@@ -763,9 +771,17 @@ for (i in 1:nrow(disc_cal_data)) {
 
     c3_k <- isTRUE(if (!is.null(gc_eligible) && length(gc_eligible) > 0) node_k %in% names(gc_eligible) else FALSE)
 
+    # C4: dev AUC-ROC avg > 0.5
+    disc_f_k <- paste0("data/eval_train/", m$model_prefix, "_", node_k, "_discrimination.rds")
+    c4_k <- if (file.exists(disc_f_k)) {
+      disc_k <- readRDS(disc_f_k)
+      isTRUE(disc_k$metrics$estimate > 0.5)
+    } else FALSE
+
     c1_vec <- c(c1_vec, paste0(if(c1_pt) "\U2713" else "", "|", if(c1_nt) "\U2713" else ""))
     c2_vec <- c(c2_vec, paste0(if(c1_pt && c2_pt) "\U2713" else "", "|", if(c1_nt && c2_nt) "\U2713" else ""))
     c3_vec <- c(c3_vec, if(c3_k) "\U2713" else "")
+    c4_vec <- c(c4_vec, if(c4_k) "\U2713" else "")
   }
 
   # Reported column for AUROC table
@@ -780,7 +796,7 @@ for (i in 1:nrow(disc_cal_data)) {
         `AUC-PRC (Test)` = fmt_val(test_matched$auprc),
         `RMSE (Dev)` = fmt_rmse(dev$rmse, dev$rmse_ci),
         `RMSE (Test)` = fmt_rmse(test_matched$rmse, test_matched$rmse_ci),
-        C1 = c1_vec, C2 = c2_vec, C3 = c3_vec,
+        C1 = c1_vec, C2 = c2_vec, C3 = c3_vec, C4 = c4_vec,
         Reported = reported_vec,
         check.names = FALSE
       )
