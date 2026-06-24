@@ -569,11 +569,15 @@ for (i in 1:nrow(disc_cal_data)) {
     c2_str <- paste0(if (c1_pt && c2_pt) "\U2713" else "", "|", if (c1_nt && c2_nt) "\U2713" else "")
     c3_str <- if (valid_c3) "\U2713" else ""
 
-    # C4: dev AUC-ROC avg > 0.5
-    disc_f <- paste0("data/eval_train/", m$model_prefix, "_", dn$node, "_discrimination.rds")
-    c4_val <- if (file.exists(disc_f)) {
-      disc <- readRDS(disc_f)
-      isTRUE(disc$metrics$estimate > 0.5)
+    # C4: LB AUC-ROC > 0.5 in both dev and test
+    disc_dev_f <- paste0("data/eval_train/", m$model_prefix, "_", dn$node, "_discrimination.rds")
+    disc_test_f <- paste0("data/eval/", m$model_prefix, "_", dn$node, "_discrimination.rds")
+    c4_val <- if (file.exists(disc_dev_f) && file.exists(disc_test_f)) {
+      disc_dev <- readRDS(disc_dev_f)
+      disc_test <- readRDS(disc_test_f)
+      dev_lb <- disc_dev$metrics$estimate - disc_dev$metrics$ci
+      test_lb <- disc_test$metrics$estimate - disc_test$metrics$ci
+      isTRUE(dev_lb > 0.5 && test_lb > 0.5)
     } else FALSE
     c4_str <- if (c4_val) "\U2713" else ""
 
@@ -660,13 +664,16 @@ for (i in 1:nrow(disc_cal_data)) {
   }
 
   c123_nodes <- if (!is.null(gc_filt)) intersect(names(gc_filt), c1c2_roc_nodes) else character(0)
-  # C4 filter: only nodes with dev AUC-ROC > 0.5
+  # C4 filter: LB AUC-ROC > 0.5 in both dev and test
   c1234_nodes <- c()
   for (nd in c123_nodes) {
-    disc_f <- paste0("data/eval_train/", m$model_prefix, "_", nd, "_discrimination.rds")
-    if (file.exists(disc_f)) {
-      disc <- readRDS(disc_f)
-      if (isTRUE(disc$metrics$estimate > 0.5)) c1234_nodes <- c(c1234_nodes, nd)
+    disc_dev_f <- paste0("data/eval_train/", m$model_prefix, "_", nd, "_discrimination.rds")
+    disc_test_f <- paste0("data/eval/", m$model_prefix, "_", nd, "_discrimination.rds")
+    if (file.exists(disc_dev_f) && file.exists(disc_test_f)) {
+      d_dev <- readRDS(disc_dev_f); d_test <- readRDS(disc_test_f)
+      dev_lb <- d_dev$metrics$estimate - d_dev$metrics$ci
+      test_lb <- d_test$metrics$estimate - d_test$metrics$ci
+      if (isTRUE(dev_lb > 0.5 && test_lb > 0.5)) c1234_nodes <- c(c1234_nodes, nd)
     }
   }
 
@@ -798,11 +805,14 @@ for (i in 1:nrow(disc_cal_data)) {
 
     c3_k <- isTRUE(if (!is.null(gc_eligible) && length(gc_eligible) > 0) node_k %in% names(gc_eligible) else FALSE)
 
-    # C4: dev AUC-ROC avg > 0.5
-    disc_f_k <- paste0("data/eval_train/", m$model_prefix, "_", node_k, "_discrimination.rds")
-    c4_k <- if (file.exists(disc_f_k)) {
-      disc_k <- readRDS(disc_f_k)
-      isTRUE(disc_k$metrics$estimate > 0.5)
+    # C4: LB AUC-ROC > 0.5 in both dev and test
+    disc_dev_k <- paste0("data/eval_train/", m$model_prefix, "_", node_k, "_discrimination.rds")
+    disc_test_k <- paste0("data/eval/", m$model_prefix, "_", node_k, "_discrimination.rds")
+    c4_k <- if (file.exists(disc_dev_k) && file.exists(disc_test_k)) {
+      dk_dev <- readRDS(disc_dev_k); dk_test <- readRDS(disc_test_k)
+      dev_lb_k <- dk_dev$metrics$estimate - dk_dev$metrics$ci
+      test_lb_k <- dk_test$metrics$estimate - dk_test$metrics$ci
+      isTRUE(dev_lb_k > 0.5 && test_lb_k > 0.5)
     } else FALSE
 
     c1_vec <- c(c1_vec, paste0(if(c1_pt) "\U2713" else "", "|", if(c1_nt) "\U2713" else ""))
