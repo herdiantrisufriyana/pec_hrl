@@ -361,8 +361,15 @@ for (i in 1:nrow(disc_cal_data)) {
       order = which(sapply(dev_nodes, \(x) x$node) == dn$node)
     )
   }))
-  if (any(duplicated(nb_plot_data$ontology))) {
-    nb_plot_data$ontology <- make.unique(nb_plot_data$ontology)
+  # For ontologies with multiple parents (DAG), number ALL occurrences
+  dup_names <- nb_plot_data$ontology[duplicated(nb_plot_data$ontology)] |> unique()
+  if (length(dup_names) > 0) {
+    for (dn in dup_names) {
+      idxs <- which(nb_plot_data$ontology == dn)
+      for (k in seq_along(idxs)) {
+        nb_plot_data$ontology[idxs[k]] <- paste0(dn, ".", k)
+      }
+    }
   }
   nb_plot_data$ontology <- factor(nb_plot_data$ontology, levels = rev(nb_plot_data$ontology))
 
@@ -374,8 +381,9 @@ for (i in 1:nrow(disc_cal_data)) {
   n_nodes <- nrow(nb_plot_data)
   fig_height <- min(48, max(2, n_nodes * 0.18 + 1))
 
+  fig_num <- i
   nb_plot <- ggplot(nb_long, aes(x = nb, y = ontology, fill = type)) +
-    geom_col(position = "identity", width = 0.7, alpha = 0.8) +
+    geom_col(position = "identity", width = 0.7) +
     scale_fill_manual(values = c("NB Ref" = "grey70", "NB Model" = "steelblue")) +
     geom_vline(xintercept = 0, color = "black", linewidth = 0.3) +
     labs(x = "Net benefit (dev set)", y = NULL, fill = NULL) +
@@ -389,6 +397,8 @@ for (i in 1:nrow(disc_cal_data)) {
   ggsave(plot_file, nb_plot, width = 10, height = fig_height, dpi = 150)
   cat(sprintf('\n\n<img src="data:image/png;base64,%s" width="100%%"/>\n\n',
     base64enc::base64encode(plot_file)))
+  cat(sprintf("**Figure %d.** Net benefit of model vs. reference at selected thresholds (dev set) — %s.\n\n",
+    fig_num, section_title))
   cat("\n\n")
 
   rows <- list()
@@ -466,7 +476,7 @@ for (i in 1:nrow(disc_cal_data)) {
 
   print(
     do.call(rbind, rows) |>
-      kable(caption = paste0("Table ", 2*i - 1, ". Threshold values and confusion matrices."), format = "html") |>
+      kable(caption = paste0("Table ", 2*i - 1, ". Threshold values and confusion matrices — ", section_title, "."), format = "html") |>
       kable_classic(full_width = TRUE) |>
       kable_styling(font_size = 12) |>
       scroll_box(height = "400px", width = "100%")
@@ -562,7 +572,7 @@ for (i in 1:nrow(disc_cal_data)) {
 
   print(
     combined |>
-      kable(caption = paste0("Table ", 2*i, ". AUROC, AUPRC, and calibration."), format = "html") |>
+      kable(caption = paste0("Table ", 2*i, ". AUROC, AUPRC, and calibration — ", section_title, "."), format = "html") |>
       kable_classic(full_width = TRUE) |>
       kable_styling(font_size = 12) |>
       scroll_box(height = "400px", width = "100%")
