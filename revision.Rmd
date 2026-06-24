@@ -857,34 +857,4 @@ for (i in 1:nrow(disc_cal_data)) {
 }
 ```
 
-# Training-validation convergence
-
-```{r Load convergence data, include=FALSE}
-# Only load for the 3 surviving models (C1-C4 passing)
-surviving_models <- c("LOPE_CHOR", "LOPE_HELLP", "EOPE_HELLP")
-conv_data <- models |>
-  filter(model_id %in% surviving_models) |>
-  rowwise() |>
-  mutate(
-    hist_file = paste0("data/history/", model_prefix, "_history.csv"),
-    history = list(if (file.exists(hist_file)) read_csv(hist_file, show_col_types = FALSE) else NULL)
-  ) |>
-  ungroup()
-```
-
-```{r Convergence plots, echo=FALSE, fig.width=12, fig.height=4, warning=FALSE}
-conv_plots <- conv_data |>
-  filter(!map_lgl(history, is.null)) |>
-  rowwise() |>
-  mutate(plot = list({
-    df <- history |> select(epoch, subset, total_loss)
-    ggplot(df, aes(x = epoch, y = total_loss, color = subset)) +
-      geom_line(linewidth = 0.8) +
-      labs(title = paste0("Fig ", figure_ref, ": ", model_id),
-           x = "Epoch", y = "Total loss", color = "Set") +
-      scale_color_manual(values = c("training" = "steelblue", "validation" = "darkred")) +
-      theme_minimal() + theme(plot.title = element_text(size = 10), legend.position = "bottom")
-  })) |> pull(plot)
-ggarrange(plotlist = conv_plots, ncol = 3, nrow = 1, common.legend = TRUE, legend = "bottom")
-```
 
