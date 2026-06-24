@@ -372,7 +372,7 @@ for (i in 1:nrow(disc_cal_data)) {
     mutate(type = factor(type, levels = c("nb_ref", "nb_model"), labels = c("NB Ref", "NB Model")))
 
   n_nodes <- nrow(nb_plot_data)
-  fig_height <- min(48, max(3, n_nodes * 0.3 + 1.5))
+  fig_height <- min(48, max(2, n_nodes * 0.18 + 1))
 
   nb_plot <- ggplot(nb_long, aes(x = nb, y = ontology, fill = type)) +
     geom_col(position = "identity", width = 0.7, alpha = 0.8) +
@@ -381,7 +381,7 @@ for (i in 1:nrow(disc_cal_data)) {
     labs(x = "Net benefit (dev set)", y = NULL, fill = NULL) +
     theme_minimal() +
     theme(
-      axis.text.y = element_text(family = "mono", size = 7, hjust = 0),
+      axis.text.y = element_text(family = "mono", size = 9, hjust = 0),
       legend.position = "top"
     )
 
