@@ -340,20 +340,31 @@ for (i in 1:nrow(disc_cal_data)) {
   }
   test_by_node <- setNames(test_nodes, sapply(test_nodes, \(x) x$node))
 
-  # --- Bar plot: NB Model vs NB Ref per ontology (one row per eval file, same order as table) ---
-  nb_plot_data <- do.call(rbind, lapply(seq_along(dev_nodes), \(idx) {
-    dn <- dev_nodes[[idx]]
-    label <- if (dn$node == "root") "root" else dn$original_id
+  # --- Bar plot: NB Model vs NB Ref per ontology (same order as table rows) ---
+  # Collect labels from the table rows (first row of each ontology pair)
+  nb_labels <- c()
+  nb_models <- c()
+  nb_refs <- c()
+  seen_nodes <- c()
+  for (dn in dev_nodes) {
+    if (dn$node %in% seen_nodes) next
+    seen_nodes <- c(seen_nodes, dn$node)
+    # Get tree display without genes, add threshold
+    label <- dn$original_id
+    if (!is.null(tree_order)) {
+      idx <- match(dn$node, tree_order$eval_node)
+      if (!is.na(idx)) {
+        raw_display <- tree_order$display[idx]
+        label <- sub(" \\(.*\\)$", "", raw_display)
+      }
+    }
+    if (dn$node == "root" && label == dn$original_id) label <- "root"
     label <- paste0(label, " [th=", sprintf("%.2f", dn$threshold), "]")
-    data.frame(
-      ontology = label,
-      nb_model = ifelse(is.nan(dn$nb_model), 0, dn$nb_model),
-      nb_ref = ifelse(is.na(dn$nb_ref), 0, dn$nb_ref),
-      order = idx
-    )
-  }))
-  nb_plot_data <- nb_plot_data[!duplicated(nb_plot_data$ontology), ]
-  dup_names <- character(0)
+    nb_labels <- c(nb_labels, label)
+    nb_models <- c(nb_models, ifelse(is.nan(dn$nb_model), 0, dn$nb_model))
+    nb_refs <- c(nb_refs, ifelse(is.na(dn$nb_ref), 0, dn$nb_ref))
+  }
+  nb_plot_data <- data.frame(ontology = nb_labels, nb_model = nb_models, nb_ref = nb_refs)
   nb_plot_data$ontology <- factor(nb_plot_data$ontology, levels = rev(nb_plot_data$ontology))
 
   nb_long <- nb_plot_data |>
@@ -380,9 +391,8 @@ for (i in 1:nrow(disc_cal_data)) {
   ggsave(plot_file, nb_plot, width = 10, height = fig_height, dpi = 150)
   cat(sprintf('\n\n<img src="data:image/png;base64,%s" width="100%%"/>\n\n',
     base64enc::base64encode(plot_file)))
-  dup_note <- if (length(dup_names) > 0) " Suffixed numbers indicate ontologies with multiple parents." else ""
-  cat(sprintf("**Figure %d.** Net benefit of model vs. reference at selected thresholds (dev set) — %s.%s\n\n",
-    fig_num, section_title, dup_note))
+  cat(sprintf("**Figure %d.** Net benefit of model vs. reference at selected thresholds (dev set) — %s.\n\n",
+    fig_num, section_title))
   cat("\n\n")
 
   rows <- list()
