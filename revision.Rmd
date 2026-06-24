@@ -342,7 +342,7 @@ for (i in 1:nrow(disc_cal_data)) {
 
   # --- Bar plot: NB Model vs NB Ref per ontology ---
   nb_plot_data <- do.call(rbind, lapply(dev_nodes, \(dn) {
-    # Tree label without genes
+    # Tree label without genes + threshold
     label <- dn$original_id
     if (!is.null(tree_order)) {
       idx <- match(dn$node, tree_order$eval_node)
@@ -352,6 +352,8 @@ for (i in 1:nrow(disc_cal_data)) {
       }
     }
     if (dn$node == "root" && label == dn$original_id) label <- "root"
+    # Append threshold
+    label <- paste0(label, " [th=", sprintf("%.2f", dn$threshold), "]")
     data.frame(
       ontology = label,
       nb_model = ifelse(is.nan(dn$nb_model), 0, dn$nb_model),
@@ -359,7 +361,6 @@ for (i in 1:nrow(disc_cal_data)) {
       order = which(sapply(dev_nodes, \(x) x$node) == dn$node)
     )
   }))
-  # Make labels unique for factor levels
   if (any(duplicated(nb_plot_data$ontology))) {
     nb_plot_data$ontology <- make.unique(nb_plot_data$ontology)
   }
@@ -371,7 +372,7 @@ for (i in 1:nrow(disc_cal_data)) {
     mutate(type = factor(type, levels = c("nb_ref", "nb_model"), labels = c("NB Ref", "NB Model")))
 
   n_nodes <- nrow(nb_plot_data)
-  fig_height <- min(48, max(2, n_nodes * 0.25 + 1))
+  fig_height <- min(48, max(3, n_nodes * 0.3 + 1.5))
 
   nb_plot <- ggplot(nb_long, aes(x = nb, y = ontology, fill = type)) +
     geom_col(position = "identity", width = 0.7, alpha = 0.8) +
@@ -638,32 +639,3 @@ conv_auc_plots <- conv_data |>
 ggarrange(plotlist = conv_auc_plots, ncol = 3, nrow = 3, common.legend = TRUE, legend = "bottom")
 ```
 
-# Decision curves
-
-Decision curves from the development set, where thresholds were selected.
-
-```{r Decision curve plots, echo=FALSE, fig.width=12, fig.height=8, warning=FALSE}
-dec_plots <- models |>
-  rowwise() |>
-  mutate(
-    dec = list(readRDS(paste0("data/eval_train/", model_prefix, "_root_decision.rds"))),
-    ta_intercept = dec$plot$layers[[3]]$data$intercept,
-    ta_slope = dec$plot$layers[[3]]$data$slope,
-    plot = list({
-      df <- dec$plot$data
-      ggplot(df, aes(x = th, y = nb)) +
-        geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
-        geom_abline(intercept = ta_intercept, slope = ta_slope,
-                    linetype = "dotted", color = "darkred", linewidth = 0.8) +
-        geom_line(color = "steelblue", linewidth = 1) +
-        annotate("text", x = 0.02, y = ta_intercept + 0.005, label = "Treat all",
-                 color = "darkred", hjust = 0, size = 3) +
-        annotate("text", x = 0.98, y = 0.005, label = "Treat none",
-                 color = "grey50", hjust = 1, size = 3) +
-        labs(title = paste0("Fig ", figure_ref, ": ", model_id),
-             x = "Threshold probability", y = "Net benefit") +
-        xlim(0, 1) + theme_minimal() + theme(plot.title = element_text(size = 10))
-    })
-  ) |> pull(plot)
-ggarrange(plotlist = dec_plots, ncol = 3, nrow = 3)
-```
