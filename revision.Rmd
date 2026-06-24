@@ -397,11 +397,7 @@ for (i in 1:nrow(disc_cal_data)) {
   ggsave(plot_file, nb_plot, width = 10, height = fig_height, dpi = 150)
   cat(sprintf('\n\n<img src="data:image/png;base64,%s" width="100%%"/>\n\n',
     base64enc::base64encode(plot_file)))
-  if (length(dup_names) > 0) {
-    dup_note <- sprintf(" Ontologies with multiple parents appear more than once: %s.", paste(dup_names, collapse = ", "))
-  } else {
-    dup_note <- ""
-  }
+  dup_note <- if (length(dup_names) > 0) " Suffixed numbers indicate ontologies with multiple parents." else ""
   cat(sprintf("**Figure %d.** Net benefit of model vs. reference at selected thresholds (dev set) — %s.%s\n\n",
     fig_num, section_title, dup_note))
   cat("\n\n")
