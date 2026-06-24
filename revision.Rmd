@@ -398,6 +398,8 @@ fmt_auroc <- function(a, ci) sprintf("%.3f (%.3f, %.3f)", a, a - ci, a + ci)
 fmt_val <- function(x) ifelse(is.na(x), "—", sprintf("%.3f", x))
 fmt_rmse <- function(r, ci) ifelse(is.na(r), "—", sprintf("%.3f (±%.4f)", r, ci))
 
+item_num <- 0  # sequential counter for all figures and tables
+
 for (i in 1:nrow(disc_cal_data)) {
   m <- disc_cal_data[i, ]
   section_title <- paste0(m$pe_subtype, " — ", m$associated_factor,
@@ -512,7 +514,8 @@ for (i in 1:nrow(disc_cal_data)) {
   n_nodes <- nrow(nb_plot_data)
   fig_height <- min(48, max(2, n_nodes * 0.18 + 1))
 
-  fig_num <- i
+  item_num <- item_num + 1
+  nb_fig_num <- item_num
   nb_plot <- ggplot(nb_long, aes(x = nb, y = ontology, fill = type)) +
     geom_col(position = "identity", width = 0.7) +
     scale_fill_manual(values = c("NB Ref" = "grey70", "NB Model" = "steelblue")) +
@@ -528,8 +531,8 @@ for (i in 1:nrow(disc_cal_data)) {
   ggsave(plot_file, nb_plot, width = 10, height = fig_height, dpi = 150)
   cat(sprintf('\n\n<img src="data:image/png;base64,%s" width="100%%"/>\n\n',
     base64enc::base64encode(plot_file)))
-  cat(sprintf("**Figure %d.** Net benefit of model vs. reference at selected thresholds (dev set) — %s.\n\n",
-    fig_num, section_title))
+  cat(sprintf("**Figure %d.** Net benefit of model vs. reference at selected thresholds — %s.\n\n",
+    nb_fig_num, section_title))
   cat("\n\n")
 
   rows <- list()
@@ -613,7 +616,7 @@ for (i in 1:nrow(disc_cal_data)) {
   cat(
     as.character(
       tbl_cm |>
-        kable(caption = paste0("Table ", 2*i - 1, ". Confusion matrices — ", section_title, "."), format = "html") |>
+        kable(caption = paste0("Table ", item_num <- item_num + 1, ". Confusion matrices — ", section_title, "."), format = "html") |>
         kable_classic(full_width = TRUE) |>
         kable_styling(font_size = 12)
     )
@@ -621,6 +624,66 @@ for (i in 1:nrow(disc_cal_data)) {
   cat('\n</div>\n')
   cat("\n```\n\n")
   cat("**Reported column:** The ontology from the manuscript (Tables 1–2) to which this row's eligible genes belong. An ontology is reported if it passes all three criteria (C1, C2, C3) and its eligible gene set is not a strict subset of another passing ontology's gene set. Rows are empty when the ontology has no eligible genes or does not pass all three criteria.\n\n")
+
+  # --- ROC curves for C1+C2+C3 passing ontologies (dev set) ---
+  gc_filt <- gradcam_eligible[[m$model_prefix]]
+  c1c2_roc_nodes <- c()
+  vtype <- m$validation_criteria
+  for (dn in dev_nodes_raw) {
+    tn <- test_by_node[[dn$node]]
+    d_ppv <- get_metric(dn$thr, "ppv"); d_tpr <- get_metric(dn$thr, "tpr")
+    t_ppv <- if (!is.null(tn)) get_metric(tn$thr, "ppv") else list(avg=NA, lb=NA, ub=NA)
+    t_tpr <- if (!is.null(tn)) get_metric(tn$thr, "tpr") else list(avg=NA, lb=NA, ub=NA)
+    d_npv <- get_metric(dn$thr, "npv"); d_tnr <- get_metric(dn$thr, "tnr")
+    t_npv <- if (!is.null(tn)) get_metric(tn$thr, "npv") else list(avg=NA, lb=NA, ub=NA)
+    t_tnr <- if (!is.null(tn)) get_metric(tn$thr, "tnr") else list(avg=NA, lb=NA, ub=NA)
+    if (vtype == "PPV/TPR") {
+      c1 <- isTRUE(is.finite(d_ppv$lb) && d_ppv$lb > 0 && is.finite(d_tpr$lb) && d_tpr$lb > 0 &&
+                    is.finite(t_ppv$lb) && t_ppv$lb > 0 && is.finite(t_tpr$lb) && t_tpr$lb > 0)
+      c2 <- c1 && isTRUE(!is.nan(d_ppv$avg) && !is.nan(d_tpr$avg) && !is.nan(t_ppv$avg) && !is.nan(t_tpr$avg) &&
+                          abs(d_ppv$avg - t_ppv$avg) <= 25 && abs(d_tpr$avg - t_tpr$avg) <= 25)
+    } else {
+      c1 <- isTRUE(is.finite(d_npv$lb) && d_npv$lb > 0 && is.finite(d_tnr$lb) && d_tnr$lb > 0 &&
+                    is.finite(t_npv$lb) && t_npv$lb > 0 && is.finite(t_tnr$lb) && t_tnr$lb > 0)
+      c2 <- c1 && isTRUE(!is.nan(d_npv$avg) && !is.nan(d_tnr$avg) && !is.nan(t_npv$avg) && !is.nan(t_tnr$avg) &&
+                          abs(d_npv$avg - t_npv$avg) <= 25 && abs(d_tnr$avg - t_tnr$avg) <= 25)
+    }
+    if (c1 && c2) c1c2_roc_nodes <- c(c1c2_roc_nodes, dn$node)
+  }
+
+  c123_nodes <- if (!is.null(gc_filt)) intersect(names(gc_filt), c1c2_roc_nodes) else character(0)
+  if (length(c123_nodes) > 0) {
+    roc_dfs <- list()
+    for (nd in c123_nodes) {
+      disc_f <- paste0("data/eval_train/", m$model_prefix, "_", nd, "_discrimination.rds")
+      if (!file.exists(disc_f)) next
+      disc <- readRDS(disc_f)
+      df <- disc$plot$data
+      lbl <- node_to_display(nd)
+      df$ontology <- lbl
+      roc_dfs <- c(roc_dfs, list(df))
+    }
+    if (length(roc_dfs) > 0) {
+      roc_all <- do.call(rbind, roc_dfs)
+      p_roc <- ggplot(roc_all, aes(x = 1 - tnr, y = tpr, color = ontology)) +
+        geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
+        geom_path(linewidth = 0.8) +
+        labs(x = "1 - Specificity (FPR)", y = "Sensitivity (TPR)", color = NULL) +
+        coord_equal() +
+        theme_minimal() +
+        theme(legend.text = element_text(size = 9), legend.position = "bottom") +
+        guides(color = guide_legend(ncol = 2, override.aes = list(linewidth = 1)))
+
+      n_curves <- length(unique(roc_all$ontology))
+      fig_h <- max(5, 4 + n_curves * 0.3)
+      plot_file <- tempfile(fileext = ".png")
+      ggsave(plot_file, p_roc, width = 8, height = fig_h, dpi = 150)
+      item_num <- item_num + 1
+      cat(sprintf('\n\n<img src="data:image/png;base64,%s" width="100%%"/>\n\n',
+        base64enc::base64encode(plot_file)))
+      cat(sprintf("**Figure %d.** ROC curves for ontologies passing C1, C2, and C3 — %s.\n\n", item_num, section_title))
+    }
+  }
 
   cat("\n\n<br><br>\n\n")
 
@@ -728,7 +791,7 @@ for (i in 1:nrow(disc_cal_data)) {
   cat(
     as.character(
       combined |>
-        kable(caption = paste0("Table ", 2*i, ". AUROC, AUPRC, and calibration — ", section_title, "."), format = "html") |>
+        kable(caption = paste0("Table ", item_num <- item_num + 1, ". AUROC, AUPRC, and calibration — ", section_title, "."), format = "html") |>
         kable_classic(full_width = TRUE) |>
         kable_styling(font_size = 12)
     )
@@ -738,113 +801,6 @@ for (i in 1:nrow(disc_cal_data)) {
   cat("**Reported column:** The ontology from the manuscript (Tables 1–2) to which this row's eligible genes belong. An ontology is reported if it passes all three criteria (C1, C2, C3) and its eligible gene set is not a strict subset of another passing ontology's gene set. Rows are empty when the ontology has no eligible genes or does not pass all three criteria.\n\n")
 
   cat("\n\n")
-}
-```
-
-# ROC curves
-
-```{r ROC curves for C1+C2+C3 passing ontologies, echo=FALSE, results='asis', warning=FALSE}
-for (i in seq_len(nrow(models))) {
-  m <- models[i, ]
-  prefix <- m$model_prefix
-  ont_name_file <- paste0("data/ontology/", prefix, ".csv")
-  gc_filt <- gradcam_eligible[[prefix]]
-  if (is.null(gc_filt) || length(gc_filt) == 0) next
-
-  # Get C1+C2 passing nodes
-  dev_nodes_raw <- extract_thr_for_model(prefix, "data/eval_train/", ont_name_file)
-  test_nodes <- extract_thr_for_model(prefix, "data/eval/", ont_name_file)
-  test_by_node <- setNames(test_nodes, sapply(test_nodes, \(x) x$node))
-  vtype <- m$validation_criteria
-
-  c1c2_nodes <- c()
-  for (dn in dev_nodes_raw) {
-    tn <- test_by_node[[dn$node]]
-    d_ppv <- get_metric(dn$thr, "ppv"); d_tpr <- get_metric(dn$thr, "tpr")
-    t_ppv <- if (!is.null(tn)) get_metric(tn$thr, "ppv") else list(avg=NA, lb=NA, ub=NA)
-    t_tpr <- if (!is.null(tn)) get_metric(tn$thr, "tpr") else list(avg=NA, lb=NA, ub=NA)
-    d_npv <- get_metric(dn$thr, "npv"); d_tnr <- get_metric(dn$thr, "tnr")
-    t_npv <- if (!is.null(tn)) get_metric(tn$thr, "npv") else list(avg=NA, lb=NA, ub=NA)
-    t_tnr <- if (!is.null(tn)) get_metric(tn$thr, "tnr") else list(avg=NA, lb=NA, ub=NA)
-    if (vtype == "PPV/TPR") {
-      c1 <- isTRUE(is.finite(d_ppv$lb) && d_ppv$lb > 0 && is.finite(d_tpr$lb) && d_tpr$lb > 0 &&
-                    is.finite(t_ppv$lb) && t_ppv$lb > 0 && is.finite(t_tpr$lb) && t_tpr$lb > 0)
-      c2 <- c1 && isTRUE(!is.nan(d_ppv$avg) && !is.nan(d_tpr$avg) && !is.nan(t_ppv$avg) && !is.nan(t_tpr$avg) &&
-                          abs(d_ppv$avg - t_ppv$avg) <= 25 && abs(d_tpr$avg - t_tpr$avg) <= 25)
-    } else {
-      c1 <- isTRUE(is.finite(d_npv$lb) && d_npv$lb > 0 && is.finite(d_tnr$lb) && d_tnr$lb > 0 &&
-                    is.finite(t_npv$lb) && t_npv$lb > 0 && is.finite(t_tnr$lb) && t_tnr$lb > 0)
-      c2 <- c1 && isTRUE(!is.nan(d_npv$avg) && !is.nan(d_tnr$avg) && !is.nan(t_npv$avg) && !is.nan(t_tnr$avg) &&
-                          abs(d_npv$avg - t_npv$avg) <= 25 && abs(d_tnr$avg - t_tnr$avg) <= 25)
-    }
-    if (c1 && c2) c1c2_nodes <- c(c1c2_nodes, dn$node)
-  }
-
-  # C1+C2+C3 nodes (filtered, matching table C3 checkmarks)
-  c123_nodes <- intersect(names(gc_filt), c1c2_nodes)
-  if (length(c123_nodes) == 0) next
-
-  # Map eval node to display name
-  ont_names_df <- if (file.exists(ont_name_file)) read.csv(ont_name_file) else NULL
-  node_label <- function(n) {
-    if (n == "root") return("root")
-    if (!is.null(ont_names_df)) {
-      colon_form <- sub("ONT", "ONT:", n)
-      row <- ont_names_df[ont_names_df$new_oid == colon_form, ]
-      if (nrow(row) > 0) return(row$old_oid[1])
-    }
-    n
-  }
-
-  # Reported nodes (after subset removal)
-  gc_filtered <- gradcam_eligible[[prefix]]
-  reported_nodes <- if (!is.null(gc_filtered)) names(gc_filtered) else character(0)
-
-  # Build combined ROC data
-  roc_dfs <- list()
-  for (nd in c123_nodes) {
-    disc_f <- paste0("data/eval/", prefix, "_", nd, "_discrimination.rds")
-    if (!file.exists(disc_f)) next
-    disc <- readRDS(disc_f)
-    df <- disc$plot$data
-    auroc_val <- disc$metrics$estimate
-    lbl <- node_label(nd)
-    is_rep <- nd %in% reported_nodes
-    df$ontology <- paste0(lbl, " (AUC=", sprintf("%.3f", auroc_val), ")",
-                          if (is_rep) " *" else "")
-    df$reported <- is_rep
-    roc_dfs <- c(roc_dfs, list(df))
-  }
-  if (length(roc_dfs) == 0) next
-  roc_all <- do.call(rbind, roc_dfs)
-
-  section_title <- paste0(m$pe_subtype, " \U2014 ", m$associated_factor,
-                          " (Fig ", m$figure_ref, ", ", m$ontology_type, ")")
-
-  p <- ggplot(roc_all, aes(x = 1 - tnr, y = tpr, color = ontology)) +
-    geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
-    geom_path(aes(linewidth = reported)) +
-    scale_linewidth_manual(values = c("TRUE" = 1.2, "FALSE" = 0.6), guide = "none") +
-    labs(title = section_title,
-         x = "1 - Specificity (FPR)", y = "Sensitivity (TPR)",
-         color = NULL) +
-    coord_equal() +
-    theme_minimal() +
-    theme(
-      plot.title = element_text(size = 11),
-      legend.text = element_text(size = 8),
-      legend.position = "bottom"
-    ) +
-    guides(color = guide_legend(ncol = 2, override.aes = list(linewidth = 1)))
-
-  n_curves <- length(unique(roc_all$ontology))
-  fig_h <- max(6, 5 + n_curves * 0.3)
-
-  plot_file <- tempfile(fileext = ".png")
-  ggsave(plot_file, p, width = 10, height = fig_h, dpi = 150)
-  cat(sprintf('\n\n<img src="data:image/png;base64,%s" width="100%%"/>\n\n',
-    base64enc::base64encode(plot_file)))
-  cat(sprintf("**ROC curves — %s.** Curves shown for all ontologies passing C1, C2, and C3. Reported ontologies (manuscript Tables 1–2) are marked with * and drawn with thicker lines.\n\n", section_title))
 }
 ```
 
