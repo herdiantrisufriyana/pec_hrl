@@ -480,6 +480,7 @@ for (i in 1:nrow(disc_cal_data)) {
 
   tbl_cm <- do.call(rbind, rows)
   cat("\n\n```{=html}\n")
+  cat('<div style="overflow-y:auto; max-height:400px; width:100%;">\n')
   cat(
     as.character(
       tbl_cm |>
@@ -488,6 +489,7 @@ for (i in 1:nrow(disc_cal_data)) {
         kable_styling(font_size = 12)
     )
   )
+  cat('\n</div>\n')
   cat("\n```\n\n")
 
   cat("\n\n<br><br>\n\n")
@@ -588,6 +590,7 @@ for (i in 1:nrow(disc_cal_data)) {
     )
 
   cat("\n\n```{=html}\n")
+  cat('<div style="overflow-y:auto; max-height:400px; width:100%;">\n')
   cat(
     as.character(
       combined |>
@@ -596,6 +599,7 @@ for (i in 1:nrow(disc_cal_data)) {
         kable_styling(font_size = 12)
     )
   )
+  cat('\n</div>\n')
   cat("\n```\n\n")
 
   cat("\n\n")
