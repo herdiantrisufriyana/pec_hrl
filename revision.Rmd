@@ -823,8 +823,8 @@ for (i in seq_len(nrow(models))) {
 
   p <- ggplot(roc_all, aes(x = 1 - tnr, y = tpr, color = ontology)) +
     geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
-    geom_path(aes(linewidth = reported), show.legend = FALSE) +
-    scale_linewidth_manual(values = c("TRUE" = 1.2, "FALSE" = 0.6)) +
+    geom_path(aes(linewidth = reported)) +
+    scale_linewidth_manual(values = c("TRUE" = 1.2, "FALSE" = 0.6), guide = "none") +
     labs(title = section_title,
          x = "1 - Specificity (FPR)", y = "Sensitivity (TPR)",
          color = NULL) +
@@ -832,10 +832,10 @@ for (i in seq_len(nrow(models))) {
     theme_minimal() +
     theme(
       plot.title = element_text(size = 11),
-      legend.text = element_text(size = 7),
+      legend.text = element_text(size = 8),
       legend.position = "bottom"
     ) +
-    guides(color = guide_legend(ncol = 2))
+    guides(color = guide_legend(ncol = 2, override.aes = list(linewidth = 1)))
 
   n_curves <- length(unique(roc_all$ontology))
   fig_h <- max(6, 5 + n_curves * 0.3)
