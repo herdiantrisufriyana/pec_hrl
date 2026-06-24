@@ -660,11 +660,20 @@ for (i in 1:nrow(disc_cal_data)) {
   }
 
   c123_nodes <- if (!is.null(gc_filt)) intersect(names(gc_filt), c1c2_roc_nodes) else character(0)
-  if (length(c123_nodes) > 0) {
+  # C4 filter: only nodes with dev AUC-ROC > 0.5
+  c1234_nodes <- c()
+  for (nd in c123_nodes) {
+    disc_f <- paste0("data/eval_train/", m$model_prefix, "_", nd, "_discrimination.rds")
+    if (file.exists(disc_f)) {
+      disc <- readRDS(disc_f)
+      if (isTRUE(disc$metrics$estimate > 0.5)) c1234_nodes <- c(c1234_nodes, nd)
+    }
+  }
+
+  if (length(c1234_nodes) > 0) {
     roc_dfs <- list()
-    for (nd in c123_nodes) {
+    for (nd in c1234_nodes) {
       disc_f <- paste0("data/eval_train/", m$model_prefix, "_", nd, "_discrimination.rds")
-      if (!file.exists(disc_f)) next
       disc <- readRDS(disc_f)
       df <- disc$plot$data
       lbl <- node_to_display(nd)
@@ -689,7 +698,7 @@ for (i in 1:nrow(disc_cal_data)) {
       item_num <- item_num + 1
       cat(sprintf('\n\n<img src="data:image/png;base64,%s" width="100%%"/>\n\n',
         base64enc::base64encode(plot_file)))
-      cat(sprintf("**Figure %d.** ROC curves for ontologies passing C1, C2, and C3 — %s.\n\n", item_num, section_title))
+      cat(sprintf("**Figure %d.** ROC curves for ontologies passing C1–C4 — %s.\n\n", item_num, section_title))
     }
   }
 
