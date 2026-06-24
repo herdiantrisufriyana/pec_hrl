@@ -241,7 +241,7 @@ compute_gradcam_eligible <- function(model_prefix) {
 ```
 
 ```{r Precompute grad-CAM eligibility and ontotype for all models, include=FALSE}
-gradcam_eligible <- setNames(
+gradcam_eligible_raw <- setNames(
   lapply(models$model_prefix, compute_gradcam_eligible),
   models$model_prefix
 )
@@ -303,6 +303,94 @@ extract_thr_for_model <- function(prefix, eval_dir, ont_name_file = NULL) {
          threshold = threshold, nb_model = nb_model, nb_ref = nb_ref)
   })
 }
+```
+
+```{r Filter grad-CAM eligible to reported set per model, include=FALSE}
+# For each model, among C1+C2+C3-passing ontologies:
+# 1. Remove ontologies whose eligible gene set is a strict subset of another's
+# 2. Among identical gene sets, keep the first in tree traversal order
+gradcam_eligible <- setNames(lapply(seq_len(nrow(models)), function(i) {
+  prefix <- models$model_prefix[i]
+  gc_raw <- gradcam_eligible_raw[[prefix]]
+  if (is.null(gc_raw) || length(gc_raw) == 0) return(gc_raw)
+
+  ont_name_file <- paste0("data/ontology/", prefix, ".csv")
+  dev_nodes_raw <- extract_thr_for_model(prefix, "data/eval_train/", ont_name_file)
+  test_nodes <- extract_thr_for_model(prefix, "data/eval/", ont_name_file)
+  test_by_node <- setNames(test_nodes, sapply(test_nodes, \(x) x$node))
+
+  c1c2_nodes <- c()
+  vtype <- models$validation_criteria[i]
+  for (dn in dev_nodes_raw) {
+    tn <- test_by_node[[dn$node]]
+    d_ppv <- get_metric(dn$thr, "ppv"); d_tpr <- get_metric(dn$thr, "tpr")
+    t_ppv <- if (!is.null(tn)) get_metric(tn$thr, "ppv") else list(avg=NA, lb=NA, ub=NA)
+    t_tpr <- if (!is.null(tn)) get_metric(tn$thr, "tpr") else list(avg=NA, lb=NA, ub=NA)
+    d_npv <- get_metric(dn$thr, "npv"); d_tnr <- get_metric(dn$thr, "tnr")
+    t_npv <- if (!is.null(tn)) get_metric(tn$thr, "npv") else list(avg=NA, lb=NA, ub=NA)
+    t_tnr <- if (!is.null(tn)) get_metric(tn$thr, "tnr") else list(avg=NA, lb=NA, ub=NA)
+
+    if (vtype == "PPV/TPR") {
+      c1 <- isTRUE(is.finite(d_ppv$lb) && d_ppv$lb > 0 && is.finite(d_tpr$lb) && d_tpr$lb > 0 &&
+                    is.finite(t_ppv$lb) && t_ppv$lb > 0 && is.finite(t_tpr$lb) && t_tpr$lb > 0)
+      c2 <- c1 && isTRUE(!is.nan(d_ppv$avg) && !is.nan(d_tpr$avg) && !is.nan(t_ppv$avg) && !is.nan(t_tpr$avg) &&
+                          abs(d_ppv$avg - t_ppv$avg) <= 25 && abs(d_tpr$avg - t_tpr$avg) <= 25)
+    } else {
+      c1 <- isTRUE(is.finite(d_npv$lb) && d_npv$lb > 0 && is.finite(d_tnr$lb) && d_tnr$lb > 0 &&
+                    is.finite(t_npv$lb) && t_npv$lb > 0 && is.finite(t_tnr$lb) && t_tnr$lb > 0)
+      c2 <- c1 && isTRUE(!is.nan(d_npv$avg) && !is.nan(d_tnr$avg) && !is.nan(t_npv$avg) && !is.nan(t_tnr$avg) &&
+                          abs(d_npv$avg - t_npv$avg) <= 25 && abs(d_tnr$avg - t_tnr$avg) <= 25)
+    }
+    if (c1 && c2) c1c2_nodes <- c(c1c2_nodes, dn$node)
+  }
+
+  c3_nodes <- intersect(names(gc_raw), c1c2_nodes)
+  if (length(c3_nodes) == 0) return(gc_raw)
+
+  gene_sets <- lapply(c3_nodes, \(n) sort(gc_raw[[n]]))
+  names(gene_sets) <- c3_nodes
+
+  tree_csv <- paste0("data/ontology_tree/", prefix, ".csv")
+  tree_order_nodes <- if (file.exists(tree_csv)) {
+    build_tree_order(tree_csv, ont_name_file)$eval_node
+  } else character(0)
+  all_ordered <- c("root", tree_order_nodes)
+  all_ordered <- all_ordered[!duplicated(all_ordered)]
+
+  # Step 1: Subset removal
+  keep <- rep(TRUE, length(c3_nodes))
+  for (a in seq_along(c3_nodes)) {
+    if (!keep[a]) next
+    gs_a <- gene_sets[[a]]
+    for (b in seq_along(c3_nodes)) {
+      if (a == b || !keep[b]) next
+      gs_b <- gene_sets[[b]]
+      if (length(gs_a) < length(gs_b) && all(gs_a %in% gs_b)) {
+        keep[a] <- FALSE
+        break
+      }
+    }
+  }
+  surviving <- c3_nodes[keep]
+  surviving_genes <- gene_sets[keep]
+
+  # Step 2: Dedup — among identical gene sets, keep first in tree order
+  final_nodes <- c()
+  seen_sets <- list()
+  surv_order <- match(surviving, all_ordered)
+  surv_order[is.na(surv_order)] <- Inf
+  surviving <- surviving[order(surv_order)]
+  surviving_genes <- surviving_genes[order(surv_order)]
+  for (k in seq_along(surviving)) {
+    gs_key <- paste(surviving_genes[[k]], collapse = ",")
+    if (!gs_key %in% seen_sets) {
+      seen_sets <- c(seen_sets, gs_key)
+      final_nodes <- c(final_nodes, surviving[k])
+    }
+  }
+
+  gc_raw[intersect(names(gc_raw), final_nodes)]
+}), models$model_prefix)
 ```
 
 ```{r Per-model combined tables, echo=FALSE, results='asis'}
