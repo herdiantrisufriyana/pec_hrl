@@ -340,37 +340,20 @@ for (i in 1:nrow(disc_cal_data)) {
   }
   test_by_node <- setNames(test_nodes, sapply(test_nodes, \(x) x$node))
 
-  # --- Bar plot: NB Model vs NB Ref per ontology ---
-  nb_plot_data <- do.call(rbind, lapply(dev_nodes, \(dn) {
-    # Tree label without genes + threshold
-    label <- dn$original_id
-    if (!is.null(tree_order)) {
-      idx <- match(dn$node, tree_order$eval_node)
-      if (!is.na(idx)) {
-        raw_display <- tree_order$display[idx]
-        label <- sub(" \\(.*\\)$", "", raw_display)
-      }
-    }
-    if (dn$node == "root" && label == dn$original_id) label <- "root"
-    # Append threshold
+  # --- Bar plot: NB Model vs NB Ref per ontology (one row per eval file, same order as table) ---
+  nb_plot_data <- do.call(rbind, lapply(seq_along(dev_nodes), \(idx) {
+    dn <- dev_nodes[[idx]]
+    label <- if (dn$node == "root") "root" else dn$original_id
     label <- paste0(label, " [th=", sprintf("%.2f", dn$threshold), "]")
     data.frame(
       ontology = label,
       nb_model = ifelse(is.nan(dn$nb_model), 0, dn$nb_model),
       nb_ref = ifelse(is.na(dn$nb_ref), 0, dn$nb_ref),
-      order = which(sapply(dev_nodes, \(x) x$node) == dn$node)
+      order = idx
     )
   }))
-  # For ontologies with multiple parents (DAG), number ALL occurrences
-  dup_names <- nb_plot_data$ontology[duplicated(nb_plot_data$ontology)] |> unique()
-  if (length(dup_names) > 0) {
-    for (dn in dup_names) {
-      idxs <- which(nb_plot_data$ontology == dn)
-      for (k in seq_along(idxs)) {
-        nb_plot_data$ontology[idxs[k]] <- paste0(dn, ".", k)
-      }
-    }
-  }
+  nb_plot_data <- nb_plot_data[!duplicated(nb_plot_data$ontology), ]
+  dup_names <- character(0)
   nb_plot_data$ontology <- factor(nb_plot_data$ontology, levels = rev(nb_plot_data$ontology))
 
   nb_long <- nb_plot_data |>
