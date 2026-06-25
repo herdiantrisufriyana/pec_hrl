@@ -528,7 +528,7 @@ for (i in 1:nrow(disc_cal_data)) {
   nb_long <- nb_plot_data |>
     select(ontology, nb_model, nb_ref) |>
     pivot_longer(cols = c(nb_model, nb_ref), names_to = "type", values_to = "nb") |>
-    mutate(type = factor(type, levels = c("nb_ref", "nb_model"), labels = c("NB Ref", "NB Model")))
+    mutate(type = factor(type, levels = c("nb_ref", "nb_model"), labels = c("Reference", "Model")))
 
   n_nodes <- nrow(nb_plot_data)
   fig_height <- min(48, max(2, n_nodes * 0.18 + 1))
@@ -536,9 +536,9 @@ for (i in 1:nrow(disc_cal_data)) {
   nb_fig_num <- supp_nb_fig[i]
   nb_plot <- ggplot(nb_long, aes(x = nb, y = ontology, fill = type)) +
     geom_col(position = "identity", width = 0.7) +
-    scale_fill_manual(values = c("NB Ref" = "grey70", "NB Model" = "steelblue")) +
+    scale_fill_manual(values = c("Reference" = "grey70", "Model" = "steelblue")) +
     geom_vline(xintercept = 0, color = "black", linewidth = 0.3) +
-    labs(x = "Net benefit (dev set)", y = NULL, fill = NULL) +
+    labs(x = "Net benefit", y = NULL, fill = NULL) +
     theme_minimal() +
     theme(
       axis.text.y = element_text(family = "mono", size = 9, hjust = 0),
@@ -549,9 +549,8 @@ for (i in 1:nrow(disc_cal_data)) {
   ggsave(plot_file, nb_plot, width = 10, height = fig_height, dpi = 150)
   cat(sprintf('\n\n<img src="data:image/png;base64,%s" width="100%%"/>\n\n',
     base64enc::base64encode(plot_file)))
-  cat(sprintf("**Figure S%d.** Net benefit bar plots for the %s.\n\n",
-    nb_fig_num, caption_desc))
-  cat("\n\n")
+  cat(sprintf("**Figure S%d.** Net benefit bar plots for the %s.", nb_fig_num, caption_desc))
+  cat(" Each bar represents the net benefit of the model (blue) or the reference (grey) at the selected threshold for each ontology. The y-axis labels show the ontology name with the threshold value in brackets. CliXO, clique-extracted ontology; GO, gene ontology; PE, preeclampsia.\n\n")
 
   rows <- list()
   for (dn in dev_nodes) {
@@ -653,7 +652,7 @@ for (i in 1:nrow(disc_cal_data)) {
   )
   cat('\n</div>\n')
   cat("\n```\n\n")
-  cat("**Reported column:** The ontology from the manuscript (Tables 1–2) to which this row's eligible genes belong. An ontology is reported if it passes all three criteria (C1, C2, C3) and its eligible gene set is not a strict subset of another passing ontology's gene set. Rows are empty when the ontology has no eligible genes or does not pass all three criteria.\n\n")
+  cat("The Reported column indicates the ontology from Tables 1–2 to which this row's eligible genes belong. An ontology is reported if it passes all criteria (C1–C4) and its eligible gene set is not a strict subset of another passing ontology's gene set. The column is empty when the ontology has no eligible genes or does not pass all criteria. \U2713, the ontology passed the criterion; \U2020, the gene had a grad-CAM value >97.5th percentile in the same ontology; |, separator between PPV/TPR and NPV/TNR results in C1 and C2 columns; Dev, development set; C1, lower bounds finite and >0; C2, absolute difference \u226425% between development and test sets; C3, at least 1 eligible gene; C4, lower bound of AUC-ROC >0.5 in both sets; CI, confidence interval; NPV, negative predictive value; PPV, positive predictive value; TNR, true negative rate; TPR, true positive rate.\n\n")
 
   # --- ROC curves for C1+C2+C3 passing ontologies (dev set) ---
   gc_filt <- gradcam_eligible[[m$model_prefix]]
@@ -740,7 +739,8 @@ for (i in 1:nrow(disc_cal_data)) {
       ggsave(plot_file, p_roc, width = 8, height = fig_h, dpi = 150)
       cat(sprintf('\n\n<img src="data:image/png;base64,%s" width="100%%"/>\n\n',
         base64enc::base64encode(plot_file)))
-      cat(sprintf("**Figure S%d.** ROC curves for the %s.\n\n", supp_roc_fig[i], caption_desc))
+      cat(sprintf("**Figure S%d.** ROC curves for the %s.", supp_roc_fig[i], caption_desc))
+      cat(" Binormal-smoothed ROC curves are shown for ontologies passing all criteria (C1–C4). The dashed diagonal line represents chance performance. Each color represents a different ontology. AUC-ROC, area under the receiver operating characteristic curve; C1–C4, cascading validation criteria; CliXO, clique-extracted ontology; FPR, false positive rate; PE, preeclampsia; ROC, receiver operating characteristic; TPR, true positive rate.\n\n")
     }
   }
 
@@ -868,7 +868,7 @@ for (i in 1:nrow(disc_cal_data)) {
   )
   cat('\n</div>\n')
   cat("\n```\n\n")
-  cat("**Reported column:** The ontology from the manuscript (Tables 1–2) to which this row's eligible genes belong. An ontology is reported if it passes all three criteria (C1, C2, C3) and its eligible gene set is not a strict subset of another passing ontology's gene set. Rows are empty when the ontology has no eligible genes or does not pass all three criteria.\n\n")
+  cat("The Reported column indicates the ontology from Tables 1–2 to which this row's eligible genes belong. An ontology is reported if it passes all criteria (C1–C4) and its eligible gene set is not a strict subset of another passing ontology's gene set. The column is empty when the ontology has no eligible genes or does not pass all criteria. \U2713, the ontology passed the criterion; \U2020, the gene had a grad-CAM value >97.5th percentile in the same ontology; |, separator between PPV/TPR and NPV/TNR results in C1 and C2 columns; Dev, development set; C1, lower bounds finite and >0; C2, absolute difference \u226425% between development and test sets; C3, at least 1 eligible gene; C4, lower bound of AUC-ROC >0.5 in both sets; AUC-PRC, area under the precision-recall curve; AUC-ROC, area under the receiver operating characteristic curve; CI, confidence interval; RMSE, root mean square error.\n\n")
 
   cat("\n\n")
 }
