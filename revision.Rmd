@@ -398,12 +398,31 @@ fmt_auroc <- function(a, ci) sprintf("%.3f (%.3f, %.3f)", a, a - ci, a + ci)
 fmt_val <- function(x) ifelse(is.na(x), "—", sprintf("%.3f", x))
 fmt_rmse <- function(r, ci) ifelse(is.na(r), "—", sprintf("%.3f (±%.4f)", r, ci))
 
-item_num <- 0  # sequential counter for all figures and tables
+# S-numbering mapped to supp placeholders
+supp_nb_fig  <- c(1, 2, 4, 6, 7, 8, 9)   # NB figure S-number per model
+supp_roc_fig <- c(NA, 3, 5, NA, NA, NA, 10)  # ROC figure S-number (NA = no ROC)
+supp_cm_tbl  <- c(5, 7, 9, 11, 13, 15, 17)  # CM table S-number per model
+supp_auc_tbl <- c(6, 8, 10, 12, 14, 16, 18) # AUC table S-number per model
+
+# Proper PE subtype descriptions for captions
+pe_desc <- c("late-onset, severe PE", "late-onset, severe PE", "late-onset, severe PE",
+             "early-onset, severe PE", "early-onset, severe PE", "early-onset, severe PE",
+             "early-onset, severe PE")
+
+# Proper associated factor descriptions for captions (matching manuscript style)
+factor_desc <- c("mid-secretory endometrium",
+                  "third-trimester placenta under chorioamnionitis",
+                  "third-trimester placenta under HELLP syndrome",
+                  "late-secretory endometrium",
+                  "first-trimester placenta",
+                  "second-trimester placenta",
+                  "third-trimester placenta under HELLP syndrome")
 
 for (i in 1:nrow(disc_cal_data)) {
   m <- disc_cal_data[i, ]
   section_title <- paste0(m$pe_subtype, " — ", m$associated_factor,
                            " (Fig ", m$figure_ref, ", ", m$ontology_type, ")")
+  caption_desc <- paste0(pe_desc[i], " pathogenesis model connected with ", factor_desc[i])
 
   cat(sprintf("\n# %s\n\n", section_title))
 
@@ -514,8 +533,7 @@ for (i in 1:nrow(disc_cal_data)) {
   n_nodes <- nrow(nb_plot_data)
   fig_height <- min(48, max(2, n_nodes * 0.18 + 1))
 
-  item_num <- item_num + 1
-  nb_fig_num <- item_num
+  nb_fig_num <- supp_nb_fig[i]
   nb_plot <- ggplot(nb_long, aes(x = nb, y = ontology, fill = type)) +
     geom_col(position = "identity", width = 0.7) +
     scale_fill_manual(values = c("NB Ref" = "grey70", "NB Model" = "steelblue")) +
@@ -531,8 +549,8 @@ for (i in 1:nrow(disc_cal_data)) {
   ggsave(plot_file, nb_plot, width = 10, height = fig_height, dpi = 150)
   cat(sprintf('\n\n<img src="data:image/png;base64,%s" width="100%%"/>\n\n',
     base64enc::base64encode(plot_file)))
-  cat(sprintf("**Figure %d.** Net benefit of model vs. reference at selected thresholds — %s.\n\n",
-    nb_fig_num, section_title))
+  cat(sprintf("**Figure S%d.** Net benefit bar plots for the %s.\n\n",
+    nb_fig_num, caption_desc))
   cat("\n\n")
 
   rows <- list()
@@ -628,7 +646,7 @@ for (i in 1:nrow(disc_cal_data)) {
   cat(
     as.character(
       tbl_cm |>
-        kable(caption = paste0("Table ", item_num <- item_num + 1, ". Confusion matrices — ", section_title, "."), format = "html") |>
+        kable(caption = paste0("Table S", supp_cm_tbl[i], ". Threshold-specific confusion matrices for the ", caption_desc, "."), format = "html") |>
         kable_classic(full_width = TRUE) |>
         kable_styling(font_size = 12)
     )
@@ -720,10 +738,9 @@ for (i in 1:nrow(disc_cal_data)) {
       fig_h <- max(5, 4 + n_curves * 0.3)
       plot_file <- tempfile(fileext = ".png")
       ggsave(plot_file, p_roc, width = 8, height = fig_h, dpi = 150)
-      item_num <- item_num + 1
       cat(sprintf('\n\n<img src="data:image/png;base64,%s" width="100%%"/>\n\n',
         base64enc::base64encode(plot_file)))
-      cat(sprintf("**Figure %d.** ROC curves for ontologies passing C1–C4 — %s.\n\n", item_num, section_title))
+      cat(sprintf("**Figure S%d.** ROC curves for the %s.\n\n", supp_roc_fig[i], caption_desc))
     }
   }
 
@@ -844,7 +861,7 @@ for (i in 1:nrow(disc_cal_data)) {
   cat(
     as.character(
       combined |>
-        kable(caption = paste0("Table ", item_num <- item_num + 1, ". AUROC, AUPRC, and calibration — ", section_title, "."), format = "html") |>
+        kable(caption = paste0("Table S", supp_auc_tbl[i], ". AUC-ROC, AUC-PRC, and RMSE for the ", caption_desc, "."), format = "html") |>
         kable_classic(full_width = TRUE) |>
         kable_styling(font_size = 12)
     )
