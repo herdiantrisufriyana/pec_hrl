@@ -1,0 +1,12 @@
+{
+  "model_id": "EOPE_HELLP",
+  "model_prefix": "OD_C_EOSPE.H3_NH3_HELLP3_cx",
+  "method": "tsne",
+  "best_l2": 0.01,
+  "train_auc": 0.7554945054945055,
+  "val_auc": 1.0,
+  "best_epoch": 1,
+  "n_genes": 283,
+  "n_samples": 33,
+  "batch_size": 8
+}

@@ -1,0 +1,11 @@
+{
+  "model_id": "EOPE_T1",
+  "model_prefix": "OD_C_EOSPE.P_TE_T1_cx",
+  "method": "tsne",
+  "best_l2": 0.01,
+  "train_auc": 0.3131868131868132,
+  "val_auc": 0.625,
+  "best_epoch": 2,
+  "n_genes": 353,
+  "n_samples": 33
+}

@@ -1,0 +1,22 @@
+model_id,model_prefix,method,best_l2,train_auc,val_auc,best_epoch,n_genes,n_samples,batch_size,error
+LOPE_MSE,OD_C_LOSPE.E_PRE_MSE_cx,tsne,0.01,0.5,0.5,1.0,72.0,25.0,,
+LOPE_CHOR,OD_C_LOSPE.C3_NC3_CHOR3_cx,tsne,0.01,0.29761904761904767,1.0,6.0,58.0,25.0,,
+LOPE_HELLP,OD_C_LOSPE.H3_NH3_HELLP3_cx,tsne,0.01,0.1845238095238095,1.0,13.0,52.0,25.0,,
+EOPE_LSE,OD_C_EOSPE.E_PRE_LSE_cx,tsne,0.01,0.695054945054945,1.0,2.0,405.0,33.0,,
+EOPE_T1,OD_C_EOSPE.P_TE_T1_cx,tsne,0.01,0.3131868131868132,0.625,2.0,353.0,33.0,,
+EOPE_T2,OD_C_EOSPE.P_TE_T2_pea,tsne,0.01,0.07692307692307693,0.875,2.0,44.0,33.0,,
+EOPE_HELLP,OD_C_EOSPE.H3_NH3_HELLP3_cx,tsne,0.01,0.7554945054945055,1.0,1.0,283.0,33.0,8.0,
+LOPE_MSE,OD_C_LOSPE.E_PRE_MSE_cx,pca,0.01,0.29761904761904767,0.875,1.0,72.0,25.0,,
+LOPE_CHOR,OD_C_LOSPE.C3_NC3_CHOR3_cx,pca,0.01,0.7857142857142857,0.875,2.0,58.0,25.0,,
+LOPE_HELLP,OD_C_LOSPE.H3_NH3_HELLP3_cx,pca,0.01,0.2857142857142857,1.0,11.0,52.0,25.0,,
+EOPE_LSE,,pca,,,,,,,,cannot import name '_average' from 'sklearn.utils._array_api' (/Users/herdiantrisufriyana/Library/Python/3.9/lib/python/site-packages/sklearn/utils/_array_api.py)
+EOPE_T1,,pca,,,,,,,,cannot import name '_average' from 'sklearn.utils._array_api' (/Users/herdiantrisufriyana/Library/Python/3.9/lib/python/site-packages/sklearn/utils/_array_api.py)
+EOPE_T2,OD_C_EOSPE.P_TE_T2_pea,pca,0.01,0.7747252747252749,0.75,1.0,44.0,33.0,,
+EOPE_HELLP,,pca,,,,,,,,cannot import name '_average' from 'sklearn.utils._array_api' (/Users/herdiantrisufriyana/Library/Python/3.9/lib/python/site-packages/sklearn/utils/_array_api.py)
+LOPE_MSE,OD_C_LOSPE.E_PRE_MSE_cx,umap,0.01,0.5,0.5,1.0,72.0,25.0,,
+LOPE_CHOR,OD_C_LOSPE.C3_NC3_CHOR3_cx,umap,0.01,0.5,0.5,1.0,58.0,25.0,,
+LOPE_HELLP,OD_C_LOSPE.H3_NH3_HELLP3_cx,umap,0.01,0.5,0.5,1.0,52.0,25.0,,
+EOPE_LSE,,umap,,,,,,,,cannot import name 'get_tags' from 'sklearn.utils' (/Users/herdiantrisufriyana/Library/Python/3.9/lib/python/site-packages/sklearn/utils/__init__.py)
+EOPE_T1,,umap,,,,,,,,cannot import name 'get_tags' from 'sklearn.utils' (/Users/herdiantrisufriyana/Library/Python/3.9/lib/python/site-packages/sklearn/utils/__init__.py)
+EOPE_T2,OD_C_EOSPE.P_TE_T2_pea,umap,0.01,0.7747252747252749,1.0,21.0,44.0,33.0,,
+EOPE_HELLP,,umap,,,,,,,,cannot import name 'get_tags' from 'sklearn.utils' (/Users/herdiantrisufriyana/Library/Python/3.9/lib/python/site-packages/sklearn/utils/__init__.py)

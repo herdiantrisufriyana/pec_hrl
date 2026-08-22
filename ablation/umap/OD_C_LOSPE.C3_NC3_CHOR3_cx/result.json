@@ -1,0 +1,11 @@
+{
+  "model_id": "LOPE_CHOR",
+  "model_prefix": "OD_C_LOSPE.C3_NC3_CHOR3_cx",
+  "method": "umap",
+  "best_l2": 0.01,
+  "train_auc": 0.5,
+  "val_auc": 0.5,
+  "best_epoch": 1,
+  "n_genes": 58,
+  "n_samples": 25
+}

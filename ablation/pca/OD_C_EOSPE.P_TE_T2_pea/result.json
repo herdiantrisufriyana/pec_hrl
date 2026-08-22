@@ -1,0 +1,11 @@
+{
+  "model_id": "EOPE_T2",
+  "model_prefix": "OD_C_EOSPE.P_TE_T2_pea",
+  "method": "pca",
+  "best_l2": 0.01,
+  "train_auc": 0.7747252747252749,
+  "val_auc": 0.75,
+  "best_epoch": 1,
+  "n_genes": 44,
+  "n_samples": 33
+}

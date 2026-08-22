@@ -1,0 +1,12 @@
+{
+  "model_id": "EOPE_LSE",
+  "model_prefix": "OD_C_EOSPE.E_PRE_LSE_cx",
+  "method": "umap",
+  "best_l2": 0.01,
+  "train_auc": 0.2692307692307693,
+  "val_auc": 0.75,
+  "best_epoch": 209,
+  "n_genes": 405,
+  "n_samples": 33,
+  "batch_size": 4
+}

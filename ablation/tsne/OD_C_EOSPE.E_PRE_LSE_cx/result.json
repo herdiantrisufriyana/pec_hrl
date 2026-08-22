@@ -1,0 +1,11 @@
+{
+  "model_id": "EOPE_LSE",
+  "model_prefix": "OD_C_EOSPE.E_PRE_LSE_cx",
+  "method": "tsne",
+  "best_l2": 0.01,
+  "train_auc": 0.695054945054945,
+  "val_auc": 1.0,
+  "best_epoch": 2,
+  "n_genes": 405,
+  "n_samples": 33
+}
