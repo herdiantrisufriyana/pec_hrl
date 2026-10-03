@@ -1,0 +1,10 @@
+{
+  "model_id": "LOPE_MSE",
+  "model_prefix": "OD_C_LOSPE.E_PRE_MSE_cx",
+  "method": "tsne",
+  "best_l2": 0.01,
+  "ext_val_auc": 0.466824644549763,
+  "n_genes": 72,
+  "n_val": 218,
+  "source": "r2_model_with_original_val_tidyset"
+}

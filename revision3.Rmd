@@ -1,0 +1,161 @@
+---
+title: "BIB R3 Revision — Ablation Study (External Validation)"
+author: "Herdiantri Sufriyana, Yu-Wei Wu, Emily Chia-Yu Su"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+---
+
+# Summary
+
+Ablation study comparing three dimensionality reduction methods (t-SNE, PCA, UMAP) for DI-VNN feature map construction. Models trained on development set, evaluated on **external validation set** (n=213–218). t-SNE achieved the highest mean external validation AUC-ROC (0.591), followed by PCA (0.497) and UMAP (0.438).
+
+# Table S20. External Validation AUC-ROC
+
+```{r results_table, echo=FALSE, message=FALSE}
+library(knitr)
+library(kableExtra)
+
+results <- data.frame(
+  Model = c("LOPE_MSE", "LOPE_CHOR", "LOPE_HELLP", "EOPE_T2",
+            "EOPE_LSE", "EOPE_T1", "EOPE_HELLP", "**Mean**"),
+  PE_Subtype = c("LOPE", "LOPE", "LOPE", "EOPE",
+                 "EOPE", "EOPE", "EOPE", ""),
+  Associated_Factor = c("Mid-secretory endometrium",
+                        "Chorioamnionitis (T3)",
+                        "HELLP syndrome (T3)",
+                        "Placentation (T2)",
+                        "Late-secretory endometrium",
+                        "Placentation (T1)",
+                        "HELLP syndrome (T3)", ""),
+  Genes = c(72, 58, 52, 44, 405, 353, 283, NA),
+  Train_n = c(25, 25, 25, 33, 33, 33, 33, NA),
+  Val_n = c(218, 218, 218, 213, 213, 213, 213, NA),
+  tSNE = c(0.467, 0.765, 0.500, 0.628, 0.640, 0.513, 0.621, 0.591),
+  PCA = c(0.045, 0.500, 0.500, 0.820, 0.524, 0.526, 0.565, 0.497),
+  UMAP = c(0.045, 0.500, 0.500, 0.488, 0.517, 0.519, 0.500, 0.438)
+)
+
+colnames(results) <- c("Model", "PE Subtype", "Associated Factor", "Genes",
+                        "Train n", "Val n", "*t*-SNE", "PCA", "UMAP")
+
+kable(results, escape = FALSE, align = "lllcccccc") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = FALSE) %>%
+  row_spec(8, bold = TRUE, background = "#eaf2f8")
+```
+
+# Comparison: R2 (internal) vs R3 (external) validation
+
+```{r comparison, echo=FALSE, message=FALSE}
+comp <- data.frame(
+  Model = c("LOPE_MSE", "LOPE_CHOR", "LOPE_HELLP", "EOPE_T2",
+            "EOPE_LSE", "EOPE_T1", "EOPE_HELLP", "**Mean**"),
+  tSNE_R2 = c(0.500, 1.000, 1.000, 0.875, 1.000, 0.625, 1.000, 0.857),
+  tSNE_R3 = c(0.467, 0.765, 0.500, 0.628, 0.640, 0.513, 0.621, 0.591),
+  PCA_R2 = c(0.875, 0.875, 1.000, 0.750, 1.000, 1.000, 0.125, 0.804),
+  PCA_R3 = c(0.045, 0.500, 0.500, 0.820, 0.524, 0.526, 0.565, 0.497),
+  UMAP_R2 = c(0.500, 0.500, 0.500, 1.000, 0.750, 0.750, 0.500, 0.643),
+  UMAP_R3 = c(0.045, 0.500, 0.500, 0.488, 0.517, 0.519, 0.500, 0.438)
+)
+
+colnames(comp) <- c("Model",
+                     "*t*-SNE (int)", "*t*-SNE (ext)",
+                     "PCA (int)", "PCA (ext)",
+                     "UMAP (int)", "UMAP (ext)")
+
+kable(comp, escape = FALSE, align = "lcccccc") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = FALSE) %>%
+  row_spec(8, bold = TRUE, background = "#eaf2f8") %>%
+  add_header_above(c(" " = 1, "*t*-SNE" = 2, "PCA" = 2, "UMAP" = 2), escape = FALSE)
+```
+
+# Training details
+
+```{r training_details, echo=FALSE, message=FALSE}
+details <- data.frame(
+  Model = c("LOPE_MSE", "", "",
+            "LOPE_CHOR", "", "",
+            "LOPE_HELLP", "", "",
+            "EOPE_T2", "", "",
+            "EOPE_LSE", "", "",
+            "EOPE_T1", "", "",
+            "EOPE_HELLP", "", ""),
+  Method = rep(c("t-SNE", "PCA", "UMAP"), 7),
+  Train_AUC = c(0.500, 0.298, 0.500,
+                0.298, 0.786, 0.500,
+                0.185, 0.286, 0.500,
+                0.077, 0.775, 0.775,
+                0.695, 0.385, 0.269,
+                0.313, 0.632, 0.753,
+                0.755, 0.214, 0.236),
+  Int_Val_AUC = c(0.500, 0.875, 0.500,
+                  1.000, 0.875, 0.500,
+                  1.000, 1.000, 0.500,
+                  0.875, 0.750, 1.000,
+                  1.000, 1.000, 0.750,
+                  0.625, 1.000, 0.750,
+                  1.000, 0.125, 0.500),
+  Ext_Val_AUC = c(0.467, 0.045, 0.045,
+                  0.765, 0.500, 0.500,
+                  0.500, 0.500, 0.500,
+                  0.628, 0.820, 0.488,
+                  0.640, 0.524, 0.517,
+                  0.513, 0.526, 0.519,
+                  0.621, 0.565, 0.500),
+  Device = c("MPS", "MPS", "MPS",
+             "MPS", "MPS", "MPS",
+             "MPS", "MPS", "MPS",
+             "MPS", "MPS", "MPS",
+             "CPU", "MPS", "MPS",
+             "CPU", "MPS", "MPS",
+             "MPS", "MPS", "MPS")
+)
+
+colnames(details) <- c("Model", "Method", "Train AUC", "Int Val AUC",
+                        "Ext Val AUC", "Device")
+
+kable(details, align = "llcccc") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = FALSE) %>%
+  pack_rows("LOPE_MSE (72 genes)", 1, 3) %>%
+  pack_rows("LOPE_CHOR (58 genes)", 4, 6) %>%
+  pack_rows("LOPE_HELLP (52 genes)", 7, 9) %>%
+  pack_rows("EOPE_T2 (44 genes)", 10, 12) %>%
+  pack_rows("EOPE_LSE (405 genes)", 13, 15) %>%
+  pack_rows("EOPE_T1 (353 genes)", 16, 18) %>%
+  pack_rows("EOPE_HELLP (283 genes)", 19, 21)
+```
+
+# Validation sets
+
+| Set | Source | n | Positive | Negative | Platform |
+|-----|--------|---|----------|----------|----------|
+| Development (LOPE) | 3 GEO datasets, same platform | 25 | 7 | 18 | Same |
+| Development (EOPE) | 3 GEO datasets, same platform | 33 | 15 | 18 | Same |
+| External validation (LOPE) | 5 GEO datasets, diverse platforms | 218 | 7 | 211 | Diverse |
+| External validation (EOPE) | 5 GEO datasets, diverse platforms | 213 | 2 | 211 | Diverse |
+
+Validation set expression values were quantile-normalized to the development set's control distribution.
+
+# Methods
+
+- Models trained on development set with internal 80/20 split for early stopping only
+- **External validation** on independent test set (n=213–218) with diverse microarray platforms
+- Same external validation set used for all three dimensionality reduction methods
+- t-SNE model: original R-compiled TidySets (same as main study)
+- PCA/UMAP models: pydivnn-compiled TidySets with respective mappings
+- Tuning: 4 L2 norms (0.01, 0.1, 1, 10) × 30 epochs, patience=15
+- Final training: best L2, up to 500 epochs, patience=250
+
+# Interpretation
+
+With proper external validation (n=213–218), *t*-SNE achieved the highest mean AUC-ROC (0.591), followed by PCA (0.497) and UMAP (0.438). This supports the original choice of *t*-SNE for DI-VNN feature map construction.
+
+The internal validation AUC-ROC values (from R2) were inflated due to small validation sets (5–7 samples). External validation provides more reliable estimates, though all methods show modest discriminative performance on the external set, consistent with the challenging cross-platform validation design.

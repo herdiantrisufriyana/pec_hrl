@@ -1,0 +1,10 @@
+{
+  "model_id": "LOPE_HELLP",
+  "model_prefix": "OD_C_LOSPE.H3_NH3_HELLP3_cx",
+  "method": "tsne",
+  "best_l2": 0.01,
+  "ext_val_auc": 0.5,
+  "n_genes": 52,
+  "n_val": 218,
+  "source": "r2_model_with_original_val_tidyset"
+}

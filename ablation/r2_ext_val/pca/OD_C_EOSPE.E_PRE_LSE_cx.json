@@ -1,0 +1,10 @@
+{
+  "model_id": "EOPE_LSE",
+  "model_prefix": "OD_C_EOSPE.E_PRE_LSE_cx",
+  "method": "pca",
+  "best_l2": 0.01,
+  "ext_val_auc": 0.523696682464455,
+  "n_genes": 405,
+  "n_val": 213,
+  "source": "r2_model_with_original_val_tidyset"
+}
