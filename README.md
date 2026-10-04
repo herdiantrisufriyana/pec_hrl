@@ -145,7 +145,8 @@ docker compose up -d --build
 
 # Project Structure
 
-- `index.Rmd` — Main analysis vignette
+- `index.Rmd` — Main analysis vignette (R)
+- `index.ipynb` — DI-VNN model training and evaluation (Python)
 - `revision.Rmd`, `revision2.Rmd`, `revision3.Rmd` — Revision-specific analyses
 - `pec_R/` — R utility functions for feature map construction
 - `R/` — R utility functions for figures and tables
@@ -153,7 +154,6 @@ docker compose up -d --build
 - `pec_real_data/` — Validated model data (weights, evaluation results)
 - `ablation/` — Ablation study scripts and results (t-SNE vs PCA vs UMAP)
 - `inst/extdata/` — Model registry and other metadata
-- `utils.py` — Python utilities
 - `Dockerfile`, `docker-compose.yml` — Reproducible environment
 
 ---
