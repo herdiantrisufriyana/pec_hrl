@@ -12701,22 +12701,7 @@ clist_OD_pheno_exprs=
 ```
 
 ```{r}
-clist_OD_uni_reg=function(voi,ooi){
-  reg_mod=
-    paste0(ooi,'~',voi,'+grouping') %>%
-    as.formula()
-  
-  suppressWarnings(
-    glm(
-        formula=reg_mod
-        ,data=clist_OD_pheno_exprs
-        ,family=binomial()
-        ,weights=weight
-      ) %>%
-      tidy() %>%
-      filter(term==voi)
-  )
-}
+source('pec_R/clist_OD_uni_reg.R')
 ```
 
 ```{r}
@@ -12741,21 +12726,7 @@ clist_OD_uni_genes=
 ```
 
 ```{r}
-clist_OD_uni_reg2=function(voi,ooi){
-  reg_mod=
-    paste0(ooi,'~',voi,'+grouping') %>%
-    as.formula()
-  
-  suppressWarnings(
-    lm(
-        formula=reg_mod
-        ,data=clist_OD_pheno_exprs
-        ,weights=weight
-      ) %>%
-      tidy() %>%
-      filter(term==voi)
-  )
-}
+source('pec_R/clist_OD_uni_reg2.R')
 ```
 
 ```{r}
@@ -12837,44 +12808,7 @@ clist_OD_inter_genes_PAPPA2=
 ```
 
 ```{r}
-clist_OD_adjustment_check=function(voi,ooi,covariates){
-  # covariates=
-  #   clist_OD_inter_genes %>%
-  #   filter(abs(r)>=0.4 & p<=0.05) %>%
-  #   select(-r,-p) %>%
-  #   filter(Var1==voi|Var2==voi) %>%
-  #   gather(variable,value) %>%
-  #   filter(variable!=voi) %>%
-  #   pull(value) %>%
-  #   unique()
-  
-  if(length(covariates)>0){
-    reg_mod=
-      covariates %>%
-      `names<-`(as.character(.)) %>%
-      lapply(\(x)paste0(ooi,'~',voi,'+',x,'+grouping')) %>%
-      lapply(as.formula)
-    
-    reg_mod %>%
-      pblapply(X=names(.),Y=.,\(X,Y)
-        suppressWarnings(
-          glm(
-              formula=Y[[X]]
-              ,data=clist_OD_pheno_exprs
-              ,family=binomial()
-              ,weights=weight
-            ) %>%
-            tidy() %>%
-            filter(term==voi) %>%
-            mutate(covariate=X) %>%
-            select(term,covariate,everything())
-        )
-      ) %>%
-      purrr::reduce(rbind)
-  }else{
-    NULL
-  }
-}
+source('pec_R/clist_OD_adjustment_check.R')
 ```
 
 ```{r eval=FALSE, include=FALSE}
@@ -13268,22 +13202,7 @@ data.frame(
 ```
 
 ```{r}
-clist_OD_multi_reg=function(data,voi,ooi,adjustment){
-  reg_mod=
-    paste0(ooi,'~',voi,adjustment) %>%
-    as.formula()
-  
-  suppressWarnings(
-    glm(
-        formula=reg_mod
-        ,data=data
-        ,family=binomial()
-        ,weights=weight
-      ) %>%
-      tidy() %>%
-      filter(term==voi)
-  )
-}
+source('pec_R/clist_OD_multi_reg.R')
 ```
 
 ```{r}

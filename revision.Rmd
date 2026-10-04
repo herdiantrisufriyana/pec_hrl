@@ -33,54 +33,7 @@ sessionInfo()
 ```
 
 ```{r Helper function for computing AUPRC from ROC data, include=FALSE}
-compute_auprc <- function(disc_rds, cal_rds) {
-  roc <- disc_rds$plot$data
-  d <- cal_rds$dist$data
-  p <- d$n[d$obs == "1"] / sum(d$n)
-  precision <- (roc$tpr * p) / (roc$tpr * p + (1 - roc$tnr) * (1 - p))
-  recall <- roc$tpr
-  precision[is.nan(precision)] <- 1
-  ord <- order(recall, precision)
-  recall <- recall[ord]
-  precision <- precision[ord]
-  idx <- !duplicated(recall)
-  recall <- recall[idx]
-  precision <- precision[idx]
-  sum(diff(recall) * (precision[-1] + precision[-length(precision)]) / 2, na.rm = TRUE)
-}
 
-extract_metrics_for_model <- function(prefix, eval_dir, ont_name_file = NULL) {
-  # Get all discrimination files (root + ontology)
-  all_disc <- list.files(eval_dir, pattern = paste0("^", prefix, "_(root|ONT[0-9]+)_discrimination\\.rds$"), full.names = TRUE)
-
-  results <- lapply(all_disc, function(f) {
-    node <- str_extract(basename(f), "root|ONT[0-9]+")
-    disc <- readRDS(f)
-    cal_f <- sub("_discrimination\\.rds$", "_calibration.rds", f)
-    cal <- if (file.exists(cal_f)) readRDS(cal_f) else NULL
-
-    auroc <- disc$metrics$estimate
-    auroc_ci <- disc$metrics$ci
-    auprc <- if (!is.null(cal)) tryCatch(compute_auprc(disc, cal), error = function(e) NA) else NA
-    rmse <- if (!is.null(cal)) cal$metrics$estimate[3] else NA
-    rmse_ci <- if (!is.null(cal)) cal$metrics$ci[3] else NA
-
-    # Map ONT ID to original
-    original_id <- node
-    if (!is.null(ont_name_file) && file.exists(ont_name_file) && node != "root") {
-      ont_names <- read.csv(ont_name_file)
-      ont_colon <- str_replace(node, "ONT", "ONT:")
-      m <- ont_names[ont_names$new_oid == ont_colon, ]
-      if (nrow(m) > 0) original_id <- m$old_oid[1]
-    }
-
-    data.frame(node = node, original_id = original_id,
-               auroc = auroc, auroc_ci = auroc_ci,
-               auprc = auprc, rmse = rmse, rmse_ci = rmse_ci)
-  })
-
-  do.call(rbind, results)
-}
 ```
 
 ```{r Load all metrics for all models, include=FALSE}
@@ -95,83 +48,6 @@ disc_cal_data <- models |>
 ```
 
 ```{r Helper function for building ontology tree, include=FALSE}
-build_tree_order <- function(ontology_csv_path, ont_name_file = NULL) {
-  raw <- read.csv(ontology_csv_path, header = FALSE,
-                  col.names = c("source", "target", "similarity", "relation"))
-
-  # Separate hierarchy (is_a) and features
-  hierarchy <- raw[raw$relation == "is_a", c("source", "target")]
-  features <- raw[raw$relation == "feature", c("source", "target")]
-
-  # Find root: target that's never a source in hierarchy
-  all_parents <- unique(hierarchy$target)
-  all_children <- unique(hierarchy$source)
-  root_node <- setdiff(all_parents, all_children)
-  if (length(root_node) == 0) root_node <- all_parents[1]
-  root_node <- root_node[1]
-
-  # Get genes per ontology node
-  genes_per_node <- split(features$source, features$target)
-
-  # Map ONT IDs to original names
-  ont_map <- setNames(nm = unique(c(hierarchy$source, hierarchy$target)))
-  if (!is.null(ont_name_file) && file.exists(ont_name_file)) {
-    ont_names <- read.csv(ont_name_file)
-    for (j in seq_len(nrow(ont_names))) {
-      ont_map[ont_names$new_oid[j]] <- ont_names$old_oid[j]
-    }
-  }
-
-  # Build children map
-  children_of <- split(hierarchy$source, hierarchy$target)
-
-  # DFS traversal to get tree order with prefixes
-  result <- list()
-  dfs <- function(node, prefix, is_last) {
-    mapped <- if (!is.null(ont_map[node]) && !is.na(ont_map[node])) ont_map[node] else node
-    # Strip ONT: prefix for matching with eval files
-    eval_node <- gsub(":", "", node)
-
-    genes <- genes_per_node[[node]]
-    genes_vec <- if (!is.null(genes) && length(genes) > 0) genes else character(0)
-    gene_str <- if (length(genes_vec) > 0) paste0(" (", paste(genes_vec, collapse=", "), ")") else ""
-
-    label <- paste0(mapped, gene_str)
-
-    if (node == root_node) {
-      display <- paste0(label, gene_str)
-      eval_id <- eval_node
-    } else {
-      connector <- if (is_last) "\U2514\U2500\U2500 " else "\U251C\U2500\U2500 "
-      display <- paste0(prefix, connector, label)
-      eval_id <- eval_node
-    }
-
-    result[[length(result) + 1]] <<- list(display = display, eval_node = eval_id, genes = genes_vec)
-
-    kids <- children_of[[node]]
-    if (!is.null(kids) && length(kids) > 0) {
-      kids <- sort(kids)
-      for (k in seq_along(kids)) {
-        child_is_last <- (k == length(kids))
-        new_prefix <- if (node == root_node) {
-          ""
-        } else {
-          paste0(prefix, if (is_last) "    " else "\U2502   ")
-        }
-        dfs(kids[k], new_prefix, child_is_last)
-      }
-    }
-  }
-
-  dfs(root_node, "", TRUE)
-  data.frame(
-    display = sapply(result, \(x) x$display),
-    eval_node = sapply(result, \(x) x$eval_node),
-    genes = I(lapply(result, \(x) x$genes)),
-    stringsAsFactors = FALSE
-  )
-}
 ```
 
 ```{r Load divnn for ontotype extraction, include=FALSE}
@@ -182,62 +58,6 @@ library(divnn)
 ```
 
 ```{r Helper function for grad-CAM criterion 3, include=FALSE}
-compute_gradcam_eligible <- function(model_prefix) {
-  gradcam_file <- paste0("data/gradcam/", model_prefix, ".csv")
-  tidyset_file <- paste0("data/tidyset/", model_prefix, "_target.ts.tar.gz")
-
-  if (!file.exists(gradcam_file) || !file.exists(tidyset_file)) return(NULL)
-
-  # Read grad-CAM heatmap and add +1 to match ontotype 1-indexing (pec.Rmd line 10961)
-  gc <- read.csv(gradcam_file, header = TRUE)
-  colnames(gc) <- c("ontology", "x", "y", "z", "value")
-  gc$x <- gc$x + 1
-  gc$y <- gc$y + 1
-  gc$z <- gc$z + 1
-
-  # Clean up any previous extraction
-  extract_dir <- sub("\\.ts\\.tar\\.gz$", "", tidyset_file)
-  if (dir.exists(extract_dir)) unlink(extract_dir, recursive = TRUE)
-
-  # Read TidySet and extract ontotype
-  ts <- TidySet.read(tidyset_file)
-  ontotype <- notes(experimentData(ts))[["ontotype"]]
-
-  # Clean up extracted directory
-  if (dir.exists(extract_dir)) unlink(extract_dir, recursive = TRUE)
-
-  # Build gene → ontology → coordinate mapping from ontotype
-  gene_gc_list <- lapply(names(ontotype), function(ont_id) {
-    ot <- ontotype[[ont_id]]
-    if (is.null(ot) || nrow(ot) == 0) return(NULL)
-    df <- as.data.frame(ot)
-    df$feature <- rownames(ot)
-    df$ontology <- ont_id
-    df
-  })
-  gene_coords <- do.call(rbind, gene_gc_list)
-  if (is.null(gene_coords) || nrow(gene_coords) == 0) return(NULL)
-
-  # Join with grad-CAM values
-  gene_gc <- merge(gene_coords, gc, by = c("ontology", "x", "y", "z"), all.x = TRUE)
-  gene_gc$value[is.na(gene_gc$value)] <- 0
-
-  # Filter to value > 0 (matching pec.Rmd line 11093)
-  gene_gc <- gene_gc[gene_gc$value > 0, ]
-
-  eligible <- list()
-  for (ont_id in unique(gene_gc$ontology)) {
-    sub <- gene_gc[gene_gc$ontology == ont_id, ]
-    if (nrow(sub) == 0) next
-    q975 <- quantile(sub$value, 0.975)
-    genes_above <- sub$feature[sub$value > q975]
-    if (length(genes_above) > 0) {
-      eligible[[ont_id]] <- as.character(genes_above)
-    }
-  }
-
-  eligible
-}
 ```
 
 ```{r Precompute grad-CAM eligibility and ontotype for all models, include=FALSE}
@@ -261,48 +81,9 @@ ontotype_genes <- setNames(lapply(models$model_prefix, function(prefix) {
 ```
 
 ```{r Helper functions for threshold tables, include=FALSE}
-fmt_cm <- function(x, lb, ub) ifelse(is.nan(x) | is.na(x), "—", sprintf("%.1f%% (%.1f, %.1f)", x, lb, ub))
 
-fmt_pair <- function(a_avg, a_lb, a_ub, b_avg, b_lb, b_ub) {
-  paste0(fmt_cm(a_avg, a_lb, a_ub), " / ", fmt_cm(b_avg, b_lb, b_ub))
-}
 
-get_metric <- function(thr_rds, m) {
-  list(avg = thr_rds$avg[thr_rds$metric == m],
-       lb = thr_rds$lb[thr_rds$metric == m],
-       ub = thr_rds$ub[thr_rds$metric == m])
-}
 
-extract_thr_for_model <- function(prefix, eval_dir, ont_name_file = NULL) {
-  all_thr <- list.files(eval_dir, pattern = paste0("^", prefix, "_(root|ONT[0-9]+)_thresholding\\.rds$"), full.names = TRUE)
-
-  lapply(all_thr, function(f) {
-    node <- str_extract(basename(f), "root|ONT[0-9]+")
-    thr <- readRDS(f)
-    dec_f <- sub("_thresholding\\.rds$", "_decision.rds", f)
-    dec <- if (file.exists(dec_f)) readRDS(dec_f) else NULL
-
-    original_id <- node
-    if (!is.null(ont_name_file) && file.exists(ont_name_file) && node != "root") {
-      ont_names <- read.csv(ont_name_file)
-      ont_colon <- str_replace(node, "ONT", "ONT:")
-      m <- ont_names[ont_names$new_oid == ont_colon, ]
-      if (nrow(m) > 0) original_id <- m$old_oid[1]
-    }
-
-    threshold <- thr$ref_value[1]
-    nb_model <- thr$avg[thr$metric == "nb"]
-    nb_ref <- NA
-    if (!is.null(dec) && length(dec$plot$layers) >= 3) {
-      ta <- dec$plot$layers[[3]]$data
-      nb_treat_all <- ta$intercept + ta$slope * threshold
-      nb_ref <- max(nb_treat_all, 0)
-    }
-
-    list(node = node, original_id = original_id, thr = thr,
-         threshold = threshold, nb_model = nb_model, nb_ref = nb_ref)
-  })
-}
 ```
 
 ```{r Filter grad-CAM eligible to reported set per model, include=FALSE}
@@ -394,9 +175,6 @@ gradcam_eligible <- setNames(lapply(seq_len(nrow(models)), function(i) {
 ```
 
 ```{r Per-model combined tables, echo=FALSE, results='asis'}
-fmt_auroc <- function(a, ci) sprintf("%.3f (%.3f, %.3f)", a, a - ci, a + ci)
-fmt_val <- function(x) ifelse(is.na(x), "—", sprintf("%.3f", x))
-fmt_rmse <- function(r, ci) ifelse(is.na(r), "—", sprintf("%.3f (±%.4f)", r, ci))
 
 # S-numbering mapped to supp placeholders
 supp_nb_fig  <- c(1, 2, 4, 6, 7, 8, 9)   # NB figure S-number per model
