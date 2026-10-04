@@ -1,0 +1,140 @@
+---
+title: "BIB R2 Revision — Ablation Study"
+author: "Herdiantri Sufriyana, Yu-Wei Wu, Emily Chia-Yu Su"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+---
+
+# Ablation study summary
+
+Ablation study comparing three dimensionality reduction methods (t-SNE, PCA, UMAP) for DI-VNN feature map construction across all seven pathogenesis models. t-SNE achieved the highest mean validation AUC-ROC (0.857), supporting the original choice.
+
+# Table S20. Validation AUC-ROC
+
+```{r results_table, echo=FALSE, message=FALSE}
+library(knitr)
+library(kableExtra)
+
+results <- data.frame(
+  Model = c("LOPE_MSE", "LOPE_CHOR", "LOPE_HELLP", "EOPE_T2",
+            "EOPE_LSE", "EOPE_T1", "EOPE_HELLP", "**Mean**"),
+  PE_Subtype = c("LOPE", "LOPE", "LOPE", "EOPE",
+                 "EOPE", "EOPE", "EOPE", ""),
+  Associated_Factor = c("Mid-secretory endometrium",
+                        "Chorioamnionitis (T3)",
+                        "HELLP syndrome (T3)",
+                        "Placentation (T2)",
+                        "Late-secretory endometrium",
+                        "Placentation (T1)",
+                        "HELLP syndrome (T3)", ""),
+  Genes = c(72, 58, 52, 44, 405, 353, 283, NA),
+  Samples = c(25, 25, 25, 33, 33, 33, 33, NA),
+  tSNE = c(0.500, 1.000, 1.000, 0.875, 1.000, 0.625, 1.000, 0.857),
+  PCA = c(0.875, 0.875, 1.000, 0.750, 1.000, 1.000, 0.125, 0.804),
+  UMAP = c(0.500, 0.500, 0.500, 1.000, 0.750, 0.750, 0.500, 0.643)
+)
+
+colnames(results) <- c("Model", "PE Subtype", "Associated Factor", "Genes",
+                        "Samples", "*t*-SNE", "PCA", "UMAP")
+
+kable(results, escape = FALSE, align = "llllcccc") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = FALSE) %>%
+  row_spec(8, bold = TRUE, background = "#eaf2f8")
+```
+
+# Training details
+
+```{r training_details, echo=FALSE, message=FALSE}
+details <- data.frame(
+  Model = c("LOPE_MSE", "", "",
+            "LOPE_CHOR", "", "",
+            "LOPE_HELLP", "", "",
+            "EOPE_T2", "", "",
+            "EOPE_LSE", "", "",
+            "EOPE_T1", "", "",
+            "EOPE_HELLP", "", ""),
+  Method = rep(c("t-SNE", "PCA", "UMAP"), 7),
+  Train_AUC = c(0.500, 0.298, 0.500,
+                0.298, 0.786, 0.500,
+                0.185, 0.286, 0.500,
+                0.077, 0.775, 0.775,
+                0.695, 0.385, 0.269,
+                0.313, 0.632, 0.753,
+                0.755, 0.214, 0.236),
+  Val_AUC = c(0.500, 0.875, 0.500,
+              1.000, 0.875, 0.500,
+              1.000, 1.000, 0.500,
+              0.875, 0.750, 1.000,
+              1.000, 1.000, 0.750,
+              0.625, 1.000, 0.750,
+              1.000, 0.125, 0.500),
+  Best_L2 = c(0.01, 0.01, 0.01,
+              0.01, 0.01, 0.01,
+              0.01, 0.01, 0.01,
+              0.01, 0.01, 0.01,
+              0.01, 0.01, 0.01,
+              0.01, 0.01, 0.10,
+              0.01, 0.01, 0.01),
+  Best_Epoch = c(1, 1, 1,
+                 6, 2, 1,
+                 13, 11, 1,
+                 2, 1, 21,
+                 2, 9, 209,
+                 2, 8, 3,
+                 1, 1, 16),
+  Batch_Size = c(32, 32, 32,
+                 32, 32, 32,
+                 32, 32, 32,
+                 32, 32, 32,
+                 32, 4, 4,
+                 32, 4, 4,
+                 8, 8, 8),
+  Device = c("MPS", "MPS", "MPS",
+             "MPS", "MPS", "MPS",
+             "MPS", "MPS", "MPS",
+             "MPS", "MPS", "MPS",
+             "CPU", "MPS", "MPS",
+             "CPU", "MPS", "MPS",
+             "MPS", "MPS", "MPS")
+)
+
+colnames(details) <- c("Model", "Method", "Train AUC", "Val AUC",
+                        "Best L2", "Best Epoch", "Batch Size", "Device")
+
+kable(details, align = "llcccccc") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = FALSE) %>%
+  pack_rows("LOPE_MSE (72 genes)", 1, 3) %>%
+  pack_rows("LOPE_CHOR (58 genes)", 4, 6) %>%
+  pack_rows("LOPE_HELLP (52 genes)", 7, 9) %>%
+  pack_rows("EOPE_T2 (44 genes)", 10, 12) %>%
+  pack_rows("EOPE_LSE (405 genes)", 13, 15) %>%
+  pack_rows("EOPE_T1 (353 genes)", 16, 18) %>%
+  pack_rows("EOPE_HELLP (283 genes)", 19, 21)
+```
+
+# Methods
+
+- Each of the 7 pathogenesis models was retrained from scratch with three dimensionality reduction methods: *t*-SNE, PCA, and UMAP.
+- Gene-gene Pearson correlation matrices were converted to distance matrices (1 − correlation) for *t*-SNE and UMAP.
+- PCA was applied directly to the correlation matrices.
+- All methods produced 3D coordinates, which were used to construct 224×224 feature maps via the same convex-hull channeling algorithm.
+- **Tuning:** 4 L2 norms (0.01, 0.1, 1, 10) × 30 epochs, patience=15.
+- **Final training:** Best L2, up to 500 epochs, patience=250.
+- **Device:** Small models (≤72 genes) trained on Apple MPS GPU with batch_size=32. Large models (>280 genes) trained on MPS with reduced batch_size (4–8) to avoid GPU memory overflow, or on CPU when MPS was unavailable.
+- **Package:** [pydivnn](https://github.com/herdiantrisufriyana/pydivnn) v0.1.0
+
+# Interpretation
+
+*t*-SNE achieved the highest mean validation AUC-ROC (0.857) and produced the most models with perfect validation discrimination (4/7), compared to PCA (3/7) and UMAP (1/7). This supports the original choice of *t*-SNE for DI-VNN feature map construction.
+
+The advantage of *t*-SNE is consistent with its emphasis on preserving local neighborhood structure in gene co-expression space, which aligns with the convolutional architecture of DI-VNN where spatially proximal features are jointly analyzed by convolutional filters.
+
+**Limitations:** The validation sets were small (5–7 samples), which means AUC-ROC estimates have high variance. The comparison was limited to three methods and a single dataset.
