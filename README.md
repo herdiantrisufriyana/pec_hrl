@@ -86,7 +86,7 @@ Click:
 Then paste:
 
 ```
-https://github.com/YOUR_GITHUB_USERNAME/YOUR_PROJECT_NAME.git
+https://github.com/herdiantrisufriyana/pec_hrl.git
 ```
 
 Open the cloned folder.
@@ -100,9 +100,6 @@ In the project root folder, run:
 ```bash
 docker compose up -d --build
 ```
-
-Docker automatically uses the repository (folder) name as YOUR_PROJECT_NAME.
-Each new project will automatically have its own image using YOUR_PROJECT_NAME and containers using YOUR_PROJECT_NAME_rstudio and YOUR_PROJECT_NAME_jupyter names.
 
 First build may take several minutes.
 
@@ -132,7 +129,19 @@ http://localhost:8888
 
 ---
 
-# 5. Stop the Environment
+# 5. Render the Vignette
+
+In RStudio, open `index.Rmd` and click **Knit**, or run:
+
+```r
+rmarkdown::render("index.Rmd", output_dir = "docs")
+```
+
+The rendered report will be at `docs/index.html`.
+
+---
+
+# 6. Stop the Environment
 
 ```bash
 docker compose down
@@ -140,7 +149,7 @@ docker compose down
 
 ---
 
-# 6. Rebuild After Adding New Packages
+# 7. Rebuild After Adding New Packages
 
 If the Dockerfile is modified (e.g., new R or Python packages):
 
@@ -152,11 +161,16 @@ docker compose up -d --build
 
 # Project Structure
 
-- `/data` — R-specific data (.rds))
-- `/R` — R utility functions
-- `/inst/extdata` — Other non-rds files
+- `index.Rmd` — Main analysis vignette (renders to `docs/index.html`)
+- `revision.Rmd`, `revision2.Rmd`, `revision3.Rmd` — Revision-specific analyses
+- `pec_R/` — R utility functions for feature map construction
+- `R/` — R utility functions for figures and tables
+- `data/` — Intermediate data (TidySets, grad-CAM, history, ontology)
+- `pec_real_data/` — Validated model data (weights, evaluation results)
+- `ablation/` — Ablation study scripts and results (t-SNE vs PCA vs UMAP)
+- `inst/extdata/` — Model registry and other metadata
 - `utils.py` — Python utilities
-- `index.R` or `index.ipynb` — Main analysis entry point
+- `Dockerfile`, `docker-compose.yml` — Reproducible environment
 
 ---
 
@@ -164,7 +178,7 @@ docker compose up -d --build
 
 - Do NOT commit large datasets (>25 MB).
 - Only push code and small metadata files.
-- Ignore privacy-sensitive in .gitignore.
+- Ignore privacy-sensitive files in .gitignore.
 - Always rebuild the image when adding new system dependencies.
 
 ---

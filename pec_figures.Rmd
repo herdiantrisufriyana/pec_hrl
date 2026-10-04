@@ -1,14 +1,9 @@
 ---
-title: "Modeling distinct pathogenesis of early- and late-onset preeclampsia via hierarchical representation learning of interactome"
-author: "Herdiantri Sufriyana, Yu-Wei Wu, Hua-Sheng Chiu, Emily Chia-Yu Su"
-date: "`r Sys.Date()`"
-output:
-  html_document:
-    toc: true
-    toc_depth: 3
-    toc_float:
-      collapsed: false
-      smooth_scroll: true
+title: "Hierarchical representation learning of transcriptome and interactome connecting
+  endometrial-decidua-placental origin of preeclampsia subtypes"
+author: "Herdiantri Sufriyana, Emily Chia-Yu Su"
+date: "2023-07-28"
+output: html_document
 ---
 
 # Programming environment
