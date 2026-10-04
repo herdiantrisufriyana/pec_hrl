@@ -81,6 +81,27 @@ RUN R -e "remotes::install_github('r-lib/httr2@v1.1.0')"
 RUN R -e "remotes::install_github('jeroen/curl@v6.2.0')"
 RUN R -e "remotes::install_github('tidyverse/ellmer@v0.1.1')"
 
+# Install Bioconductor packages for index.Rmd
+RUN R -e "BiocManager::install('Biobase', version='3.20', ask=FALSE, update=FALSE, force=TRUE)"
+RUN R -e "BiocManager::install('biomaRt', version='3.20', ask=FALSE, update=FALSE, force=TRUE)"
+RUN R -e "BiocManager::install('oligo', version='3.20', ask=FALSE, update=FALSE, force=TRUE)"
+RUN R -e "BiocManager::install('limma', version='3.20', ask=FALSE, update=FALSE, force=TRUE)"
+RUN R -e "BiocManager::install('sva', version='3.20', ask=FALSE, update=FALSE, force=TRUE)"
+RUN R -e "BiocManager::install('goseq', version='3.20', ask=FALSE, update=FALSE, force=TRUE)"
+RUN R -e "BiocManager::install('AnnotationDbi', version='3.20', ask=FALSE, update=FALSE, force=TRUE)"
+RUN R -e "BiocManager::install('GO.db', version='3.20', ask=FALSE, update=FALSE, force=TRUE)"
+RUN R -e "BiocManager::install('preprocessCore', version='3.20', ask=FALSE, update=FALSE, force=TRUE)"
+
+# Install Bioconductor packages for index.Rmd (continued)
+RUN R -e "BiocManager::install('ssize', version='3.20', ask=FALSE, update=FALSE, force=TRUE)"
+
+# Install CRAN packages for index.Rmd
+RUN R -e "install.packages(c('Rtsne', 'WGCNA', 'parallelDist', 'imputeTS', 'ontologyIndex', 'ontologySimilarity', 'extrafont', 'rvest', 'broom'), repos='http://cran.rstudio.com/')"
+
+# Install GitHub packages for index.Rmd
+RUN R -e "remotes::install_github('herdiantrisufriyana/divnn@v0.1.3.3')"
+RUN R -e "remotes::install_github('herdiantrisufriyana/clixo@v0.1.1')"
+
 # Install additional system dependencies, Python libraries and R packages, chronologically
 
 

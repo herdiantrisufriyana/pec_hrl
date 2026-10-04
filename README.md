@@ -18,18 +18,6 @@ A fully reproducible data analysis report.
 
 ---
 
-## Project Repository
-
-GitHub Repository:
-
-https://github.com/herdiantrisufriyana/pec_hrl
-
-GitHub Pages Report:
-
-https://herdiantrisufriyana.github.io/pec_hrl/
-
----
-
 # Reproducibility Instructions
 
 This project is fully reproducible using Docker.
@@ -129,15 +117,11 @@ http://localhost:8888
 
 ---
 
-# 5. Render the Vignette
+# 5. Run the Analysis
 
-In RStudio, open `index.Rmd` and click **Knit**, or run:
+In RStudio, open `index.Rmd` and click **Knit**, or run individual chunks interactively.
 
-```r
-rmarkdown::render("index.Rmd", output_dir = "docs")
-```
-
-The rendered report will be at `docs/index.html`.
+By default, `comp_req` is set to `c()` (empty), which reads from saved intermediate files for a fast run. To recompute from scratch, set `comp_req=c(1,2,3,4)` in the first chunk.
 
 ---
 
@@ -161,7 +145,7 @@ docker compose up -d --build
 
 # Project Structure
 
-- `index.Rmd` — Main analysis vignette (renders to `docs/index.html`)
+- `index.Rmd` — Main analysis vignette
 - `revision.Rmd`, `revision2.Rmd`, `revision3.Rmd` — Revision-specific analyses
 - `pec_R/` — R utility functions for feature map construction
 - `R/` — R utility functions for figures and tables
