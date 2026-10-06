@@ -13,6 +13,8 @@ A fully reproducible data analysis report.
   Graduate Institute of Biomedical Informatics, College of Medical Science and Technology, Taipei Medical University, Taipei, Taiwan  
 - Hua-Sheng Chiu, PhD  
   Texas Children's Cancer Center, Baylor College of Medicine, Houston, TX, USA  
+- Pavel Sumazin, PhD  
+  Texas Children's Cancer Center, Baylor College of Medicine, Houston, TX, USA  
 - Emily Chia-Yu Su, PhD  
   Institute of Biomedical Informatics, College of Medicine, National Yang Ming Chiao Tung University, Taipei, Taiwan  
 
